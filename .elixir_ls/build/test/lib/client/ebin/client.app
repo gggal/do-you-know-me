@@ -1,0 +1,10 @@
+{application,client,
+             [{applications,[kernel,stdlib,elixir,logger]},
+              {description,"client"},
+              {modules,['Elixir.Client.Application',
+                        'Elixir.Client.Connectivity','Elixir.Client.Worker',
+                        'Elixir.TestServer']},
+              {registered,[]},
+              {vsn,"0.1.0"},
+              {extra_applications,[logger]},
+              {mod,{'Elixir.Client.Application',[]}}]}.
