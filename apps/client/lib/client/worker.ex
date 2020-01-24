@@ -1,7 +1,7 @@
 defmodule Client.Worker do
   use GenServer
 
-  #TODO: client sending invitation/question/guess/answer to themselves
+  # TODO: client sending invitation/question/guess/answer to themselves
 
   @server_name Application.get_env(:client, :server_name, :quiz_server)
   @server_location Application.get_env(:client, :server_location, "127.0.0.1")
@@ -36,7 +36,7 @@ defmodule Client.Worker do
   registered under different username. Returns :ok otherwise.
   """
   def handle_call({:register, username}, _from, state) do
-    {:reply,GenServer.call({:global, :quiz_server}, {:register, username}),
+    {:reply, GenServer.call({:global, :quiz_server}, {:register, username}),
      Map.put(state, :username, username)}
   end
 
@@ -63,54 +63,55 @@ defmodule Client.Worker do
   If `from` is a registered user, returns {question, a, b, c} where a,b and c are the possible answer.
   Returns :error otherwise.
   """
-  #def handle_call({:to_guess, from}, _, %{to_guess: {from, q, _}} = state) do
+  # def handle_call({:to_guess, from}, _, %{to_guess: {from, q, _}} = state) do
   #  {:reply, q, state}
-  #end
+  # end
 
-  #def handle_call({:to_guess, _}, _, state) do
+  # def handle_call({:to_guess, _}, _, state) do
   #  {:reply, :error, state}
-  #end
+  # end
 
   def handle_call(:get_to_guess, _, %{to_guess: questions} = state) do
-    {:reply, questions |> Enum.map(fn {user, {q, _ans}} -> {user, {fetch_question(q)}} end)
-    |> Map.new,
-     state}
+    {:reply,
+     questions
+     |> Enum.map(fn {user, {q, _ans}} -> {user, {fetch_question(q)}} end)
+     |> Map.new(), state}
   end
 
   @doc """
   If `from` is a registered user, returns {question, a, b, c} where a,b and c are the possible answer.
   Returns :error otherwise.
   """
-  #def handle_call({:to_answer, from}, _, %{to_answer: {from, q}} = state) do
+  # def handle_call({:to_answer, from}, _, %{to_answer: {from, q}} = state) do
   #  # fetch question
   #  {:reply, q, state}
-  #end
+  # end
 
-  #def handle_call({:to_answer, _}, _, state) do
+  # def handle_call({:to_answer, _}, _, state) do
   #  {:reply, :error, state}
-  #end
+  # end
 
   def handle_call(:get_to_answer, _, %{to_answer: questions} = state) do
-    {:reply, questions |> Enum.map(fn {user, q} -> {user, fetch_question(q)} end) |> Map.new, state}
+    {:reply, questions |> Enum.map(fn {user, q} -> {user, fetch_question(q)} end) |> Map.new(),
+     state}
   end
 
   @doc """
   If `from` is a registered user, returns {question, your_answer, others_guess}.
   Returns :error otherwise.
   """
-  #def handle_call({:to_see, from}, _, %{to_see: q_map} = state) do
+  # def handle_call({:to_see, from}, _, %{to_see: q_map} = state) do
   #  case Map.get(q_map, from) do
   #    nil -> {:reply, :error, state}
   #    result -> {:reply, result, %{state | to_see: Map.delete(q_map, from)}}
   #  end
-  #end
+  # end
 
   def handle_call(:get_to_see, _, %{to_see: questions} = state) do
     {:reply,
      questions
      |> Enum.map(fn {user, {q, ans, guess}} -> {user, {fetch_question(q), ans, guess}} end)
-     |> Map.new,
-     Map.delete(state, :to_see)}
+     |> Map.new(), Map.delete(state, :to_see)}
   end
 
   @doc """
@@ -134,7 +135,7 @@ defmodule Client.Worker do
   @doc """
   Returns map of all invitations sent from other clients.
   """
-  #TODO get_invitations
+  # TODO get_invitations
   def handle_call(:see_invitations, _, %{invitations: invitations} = state) do
     {:reply, invitations, state}
   end
@@ -254,6 +255,6 @@ defmodule Client.Worker do
     |> Enum.at(question_number - 1)
     |> Poison.decode()
     |> elem(1)
-    |> List.to_tuple
+    |> List.to_tuple()
   end
 end

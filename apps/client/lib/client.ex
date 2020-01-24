@@ -18,7 +18,6 @@ defmodule Client.Application do
       children = [
         # Starts a worker by calling: Client.Worker.start_link(arg)
         worker(Client.Worker, [])
-
       ]
 
       IO.puts("result")
