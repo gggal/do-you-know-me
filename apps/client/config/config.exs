@@ -15,11 +15,13 @@ use Mix.Config
 # and access this configuration in your application as:
 #
 #     Application.get_env(:client, :key)
-#
-# You can also configure a 3rd-party app:
-#
-#     config :logger, level: :info
-#
+
+config :logger,
+  backends: [{LoggerFileBackend, :client_error_log}]
+
+config :logger, :client_error_log,
+path: "client.log",
+level: :info
 
 # It is also possible to import configuration files, relative to this
 # directory. For example, you can emulate configuration per environment

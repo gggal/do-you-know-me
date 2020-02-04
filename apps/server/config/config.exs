@@ -19,13 +19,18 @@ config :clustered_nodes, nodes: [:"node1@127.0.0.1", :"node2@127.0.0.1", :"node3
 #     Application.get_env(:server, :key)
 #
 # You can also configure a 3rd-party app:
-#
-#     config :logger, level: :info
-#
+
+config :logger,
+  backends: [{LoggerFileBackend, :server_error_log}]
+
+config :logger, :server_error_log,
+path: "server.log",
+level: :info
+
 
 # It is also possible to import configuration files, relative to this
 # directory. For example, you can emulate configuration per environment
-# by uncommenting the line below and defining dev.exs, test.exs and such.
+# by uncommenting tthehe line below and defining dev.exs, test.exs and such.
 # Configuration from the imported file will override the ones defined
 # here (which is why it is important to import them last).
 #
