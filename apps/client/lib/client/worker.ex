@@ -25,13 +25,12 @@ defmodule Client.Worker do
   Initializes the server.
   """
   def init(_) do
-    # GenServer.call({:global, :quiz_server}, {:reconnect, node()})
     {:ok, %{invitations: %{}, to_answer: %{}, to_guess: %{}, to_see: %{}}}
   end
 
   @doc """
-  Called when user wants to register under name `username`. Once the user is registered he/she is
-  associated with this username aand it cannot be changed.
+  Called when the user wants to register under name `username`. Once the user is registered he/she is
+  associated with this username and it cannot be changed.
   Returns :taken if `username` is already taken. Retunrs :already_registered if user is already
   registered under different username. Returns :ok otherwise.
   """
@@ -41,7 +40,7 @@ defmodule Client.Worker do
   end
 
   @doc """
-  Called when user wants to unregister. Returns :not_registered if the client hadn't been registered.
+  Called when the user wants to unregister. Returns :not_registered if the client hadn't been registered.
   Returns :unregistered otherwise.
   """
   def handle_call(:unregister, _from, state) do

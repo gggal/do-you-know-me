@@ -1,8 +1,8 @@
 defmodule Client.Application do
   @moduledoc """
-  Once registered, a client can send invitation to every registered user. If a user accept the
-  invitation, he/she receives a question tat he/she has to answer. After that the other user receives
-  the same question and has to try to guess first user's answer. ...
+  Once registered, a client can send an invitation to every registered user. If the user accepts the
+  invitation, they receive a question that they have to answer. After that the other user receives
+  the same question and has to try to guess the first user's answer.
   """
 
   use Application
@@ -21,22 +21,19 @@ defmodule Client.Application do
       ]
 
       IO.puts("result")
-      IO.puts(:global.whereis_name(:quiz_server))
+      # IO.puts(:global.whereis_name(:quiz_server))
 
       opts = [strategy: :one_for_one, name: Client.Supervisor]
       Supervisor.start_link(children, opts)
     else
       _ -> {:error, "Can't connect to server or establish client."}
     end
-
-    # Client.Connectivity.connect_to_server_node("127.0.0.1")
-    # Client.Supervisor.start_link()
   end
 
   @doc """
-  Registering client. Once registered the client's data will be saved by the server even if client is
-  disconnected. This data is relations with all clients client is playing. If `name` id taken by
-  another client or this node is associated with other user registration will fail and :taken will
+  Registering client. Once registered the client's data will be saved by the server even if the client is
+  disconnected. This data is relations with the other players. If `name` id is is already taken by another
+  user or this node is associated with another user, registration will fail and :taken will
   be returned. Returns :registered otherwise.
   """
   def register(name) do
@@ -44,8 +41,8 @@ defmodule Client.Application do
   end
 
   @doc """
-  Unregistering client. This is the only way client's data to be wiped out. After unregistering client
-  can register again under same or different name. Returns :not_registered if client is not registered.
+  Unregistering client. This is the only way client's data can be wiped out. After unregistering a client
+  can register again under the same or different name. Returns :not_registered if client is not registered.
   Returns :unregister if the unregistering is successful.
   """
   def unregister() do
@@ -53,7 +50,7 @@ defmodule Client.Application do
   end
 
   @doc """
-  Returns a map with all the current invitations.
+  Returns a map with all current invitations.
   """
   def get_invitations() do
     GenServer.call(:quiz_client, :see_invitations)
@@ -67,7 +64,6 @@ defmodule Client.Application do
   @doc """
   Declines an invitation from `from` if it exists.
   """
-  @spec
   def decline(from) do
     GenServer.cast(:quiz_client, {:decline, from})
   end
@@ -116,5 +112,12 @@ defmodule Client.Application do
 
   def list_registered() do
     GenServer.call(:quiz_client, :list_registered)
+  end
+
+  @doc """
+  Lists all users that are playing with the current user
+  """
+  def list_related() do
+    GenServer.call(:quiz_client, :get_related)
   end
 end
