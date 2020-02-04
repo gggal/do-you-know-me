@@ -99,8 +99,6 @@ defmodule Server.Worker do
   percentages of right guessed questions for every user.
   """
   def handle_call(:get_rating, {from, _}, {relations, _} = state) do
-    # Logger.info("Client #{of} is getting rate with everyone.")
-
     case get_username(from, state) do
       nil ->
         {:reply, :not_registered, state}
@@ -141,6 +139,16 @@ defmodule Server.Worker do
     {:reply,
      relations
      |> Enum.map(fn {name, _} -> name end), {relations, clients}}
+  end
+
+  @doc """
+  Returns a list of all players the client is currently playing with.
+  """
+  def handle_call(:list_related, {from, _}, {relations, clients} = state) do
+    username = get_username(from, state)
+
+    {:reply, Map.get(relations, username, %{}) |> Map.delete(:node) |> Map.keys(),
+     {relations, clients}}
   end
 
   @doc """

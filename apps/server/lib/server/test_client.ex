@@ -59,6 +59,10 @@ defmodule Server.TestClient do
     {:reply, GenServer.call({:global, @server_name}, :list_registered), state}
   end
 
+  def handle_call(:list_related, _, state) do
+    {:reply, GenServer.call({:global, @server_name}, :list_related), state}
+  end
+
   def handle_cast({:answer, to, answer}, %{username: from} = state) do
     GenServer.cast({:global, @server_name}, {:answer, from, to, answer, ""})
     {:noreply, state}

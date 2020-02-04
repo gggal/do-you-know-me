@@ -15,7 +15,7 @@ defmodule Server.WorkerTest do
     :ok
   end
 
-  # Client1 has sent invitation to client2 and client3 and client2 are playing.
+  # Client1 has sent invitation to client2 and client3.
   setup do
     state()
     :rpc.call(node1(), GenServer, :call, [:quiz_client, :unregister])
@@ -91,6 +91,15 @@ defmodule Server.WorkerTest do
     # list = :rpc.call(node1(), GenServer, :call, [:quiz_client, :list_registered])
     list = remote_call(node1(), :list_registered)
     assert [] == ["username1", "username2", "username3"] -- list
+  end
+
+  test "returning empty list of related players before the game has started" do
+    assert [] = remote_call(node1(), :list_related)
+  end
+
+  test "returning non-empty list of related players after the game has started" do
+    remote_cast(node2(), {:accept, "username1"})
+    assert ["username1"] == remote_call(node2(), :list_related)
   end
 
   # @tag :skip
