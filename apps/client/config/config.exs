@@ -16,12 +16,13 @@ use Mix.Config
 #
 #     Application.get_env(:client, :key)
 
-config :logger,
-  backends: [{LoggerFileBackend, :client_error_log}]
+# TODO: should uncomment this when decoupling the apps
+# config :logger,
+#   backends: [{LoggerFileBackend, :client_error_log}]
 
-config :logger, :client_error_log,
-path: "client.log",
-level: :info
+# config :logger, :client_error_log,
+#   path: "client.log",
+#   level: :info
 
 # It is also possible to import configuration files, relative to this
 # directory. For example, you can emulate configuration per environment

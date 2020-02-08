@@ -18,7 +18,7 @@ defmodule Client.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger, :logger_file_backend,],
+      extra_applications: [:logger],
       mod: {Client.Application, []}
     ]
   end
@@ -27,7 +27,7 @@ defmodule Client.MixProject do
   defp deps do
     [
       {:poison, "~> 3.1"},
-      {:logger_file_backend, "~> 0.0.11"},
+      {:logger_file_backend, "~> 0.0.11", runtime: false}
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"},
       # {:sibling_app_in_umbrella, in_umbrella: true},

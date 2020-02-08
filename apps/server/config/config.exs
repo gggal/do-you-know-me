@@ -24,9 +24,8 @@ config :logger,
   backends: [{LoggerFileBackend, :server_error_log}]
 
 config :logger, :server_error_log,
-path: "server.log",
-level: :info
-
+  path: "app.log",
+  level: :info
 
 # It is also possible to import configuration files, relative to this
 # directory. For example, you can emulate configuration per environment
