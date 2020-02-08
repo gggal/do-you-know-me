@@ -1,6 +1,4 @@
 defmodule Server.Connectivity do
-  @questions_file "questions.txt"
-
   def try_make_accessible do
     case Node.alive?() do
       true ->

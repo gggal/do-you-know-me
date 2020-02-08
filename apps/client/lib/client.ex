@@ -1,9 +1,9 @@
 defmodule Client.Application do
   @moduledoc """
-  Once registered, a client can send an invitation to every registered user. If the user accepts the
-  invitation, they receive a question that they have to answer. After that the other user receives
-  the same question and has to try to guess the first user's answer.
+  Single point of access between the user interfaces and the client.
   """
+
+  require Logger
 
   use Application
 
@@ -20,7 +20,6 @@ defmodule Client.Application do
         worker(Client.Worker, [])
       ]
 
-      IO.puts("result")
       # IO.puts(:global.whereis_name(:quiz_server))
 
       opts = [strategy: :one_for_one, name: Client.Supervisor]
@@ -37,6 +36,7 @@ defmodule Client.Application do
   be returned. Returns :registered otherwise.
   """
   def register(name) do
+    Logger.info("Client is registering")
     GenServer.call(:quiz_client, {:register, name})
   end
 
@@ -46,6 +46,7 @@ defmodule Client.Application do
   Returns :unregister if the unregistering is successful.
   """
   def unregister() do
+    Logger.info("Client is unregistering")
     GenServer.call(:quiz_client, :unregister)
   end
 
@@ -53,11 +54,16 @@ defmodule Client.Application do
   Returns a map with all current invitations.
   """
   def get_invitations() do
+    Logger.info("Client is listing invitations")
     GenServer.call(:quiz_client, :see_invitations)
     |> Enum.map(fn {key, _val} -> key end)
   end
 
+  @doc """
+  Sends invitation to `user`, doesn't wait for the response.
+  """
   def invite(user) do
+    Logger.info("Client is inviting #{user}")
     GenServer.cast(:quiz_client, {:invite, user})
   end
 
@@ -65,6 +71,7 @@ defmodule Client.Application do
   Declines an invitation from `from` if it exists.
   """
   def decline(from) do
+    Logger.info("Client is declining #{from}'s invitation")
     GenServer.cast(:quiz_client, {:decline, from})
   end
 
@@ -72,6 +79,7 @@ defmodule Client.Application do
   Accepts an invitation from `from` if it exists.
   """
   def accept(from) do
+    Logger.info("Client is accepting #{from}'s invitation")
     GenServer.cast(:quiz_client, {:accept, from})
   end
 
@@ -79,38 +87,71 @@ defmodule Client.Application do
   Gives answer to question sent from `other`. Answer should be :a, :b, :c.
   """
   def give_answer(other, answer) do
+    Logger.info("Client's answer for #{other}'s question is #{answer}")
     GenServer.cast(:quiz_client, {:answer, other, answer})
   end
 
+  @doc """
+  Gives guess to question answered from `other`. Answer should be :a, :b, :c.
+  """
   def give_guess(other, guess) do
+    Logger.info("Client's guess for #{other}'s question is #{guess}")
     GenServer.call(:quiz_client, {:guess, other, guess})
   end
 
+  @doc """
+  Obtain one's username.
+  """
   def username() do
+    Logger.info("Client is fetching their username")
     GenServer.call(:quiz_client, :username)
   end
 
-  def get_to_guess() do
-    GenServer.call(:quiz_client, :get_to_guess)
+  @doc """
+  Obtain a question to be guessed by the user
+  """
+  def get_to_guess(other) do
+    Logger.info("Client is fetching a question to guess from #{other}")
+    GenServer.call(:quiz_client, :get_to_guess) |> Map.get(other, nil)
   end
 
-  def get_to_answer() do
-    GenServer.call(:quiz_client, :get_to_answer)
+  @doc """
+  Obtain a question to be answered by the user
+  """
+  def get_to_answer(other) do
+    Logger.info("Client is fetching a question to answer from #{other}")
+    GenServer.call(:quiz_client, :get_to_answer) |> Map.get(other, nil)
   end
 
-  def get_to_see() do
-    GenServer.call(:quiz_client, :get_to_see)
+  @doc """
+  Obtain a question to be reviewed by the user
+  """
+  def get_to_see(other) do
+    Logger.info("Client is fetching a question to review from #{other}")
+    GenServer.call(:quiz_client, :get_to_see) |> Map.get(other, nil)
   end
 
+  @doc """
+  Obtain all scores
+  """
   def get_rating() do
+    Logger.info("Client is fetching all scores")
     GenServer.call(:quiz_client, :get_rating)
   end
 
+  @doc """
+  Obtain scores with user `with`
+  """
   def get_rating(with) do
+    Logger.info("Client is fetching scores with #{with}")
     GenServer.call(:quiz_client, {:get_rating, with})
   end
 
+  @doc """
+  List all registered users
+  """
   def list_registered() do
+    Logger.info("Client is listing all registered clients")
     GenServer.call(:quiz_client, :list_registered)
   end
 
@@ -118,6 +159,7 @@ defmodule Client.Application do
   Lists all users that are playing with the current user
   """
   def list_related() do
+    Logger.info("Client is listing all clients they're playing with")
     GenServer.call(:quiz_client, :get_related)
   end
 end

@@ -8,10 +8,18 @@ defmodule Client.Worker do
   @questions_file "questions.txt"
 
   @moduledoc """
-  This module holds user's name after he/she is registered, all invitations sent from other users,
-  all the questions he/she has to answer, all the questions others answered and their guesses,
+  This module holds user's name after they are registered, all invitations sent from other users,
+  all the questions they have to answer, all the questions others answered and their guesses,
   all the questions user had answered and if other's got them right. A user can only register once
-  and username cannot be changed.
+  and the username cannot be changed.
+
+  The client's inner state consists of the following data:
+    - client's username
+    - to_guess - all questions waiting to be guessed, the correct answer, the question and other
+    client's username
+    - to_answer - all questions waiting to be answered, the question and other client's username
+    - to_see - all guessed questions, the guess, the correct answer, the question and other
+    client's username
   """
 
   @doc """
@@ -62,14 +70,6 @@ defmodule Client.Worker do
   If `from` is a registered user, returns {question, a, b, c} where a,b and c are the possible answer.
   Returns :error otherwise.
   """
-  # def handle_call({:to_guess, from}, _, %{to_guess: {from, q, _}} = state) do
-  #  {:reply, q, state}
-  # end
-
-  # def handle_call({:to_guess, _}, _, state) do
-  #  {:reply, :error, state}
-  # end
-
   def handle_call(:get_to_guess, _, %{to_guess: questions} = state) do
     {:reply,
      questions
@@ -81,15 +81,6 @@ defmodule Client.Worker do
   If `from` is a registered user, returns {question, a, b, c} where a,b and c are the possible answer.
   Returns :error otherwise.
   """
-  # def handle_call({:to_answer, from}, _, %{to_answer: {from, q}} = state) do
-  #  # fetch question
-  #  {:reply, q, state}
-  # end
-
-  # def handle_call({:to_answer, _}, _, state) do
-  #  {:reply, :error, state}
-  # end
-
   def handle_call(:get_to_answer, _, %{to_answer: questions} = state) do
     {:reply, questions |> Enum.map(fn {user, q} -> {user, fetch_question(q)} end) |> Map.new(),
      state}
@@ -99,13 +90,6 @@ defmodule Client.Worker do
   If `from` is a registered user, returns {question, your_answer, others_guess}.
   Returns :error otherwise.
   """
-  # def handle_call({:to_see, from}, _, %{to_see: q_map} = state) do
-  #  case Map.get(q_map, from) do
-  #    nil -> {:reply, :error, state}
-  #    result -> {:reply, result, %{state | to_see: Map.delete(q_map, from)}}
-  #  end
-  # end
-
   def handle_call(:get_to_see, _, %{to_see: questions} = state) do
     {:reply,
      questions
@@ -118,7 +102,6 @@ defmodule Client.Worker do
   he/she is playing with. `other` is the username of the other user, `per1` and `per2` are the
   percentages of right guessed questions for every user.
   """
-
   def handle_call(:get_rating, _, state) do
     {:reply, GenServer.call({:global, @server_name}, :get_rating), state}
   end

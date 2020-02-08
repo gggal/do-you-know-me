@@ -6,9 +6,13 @@ defmodule Server.Worker do
   @questions_count 100
 
   @moduledoc """
-  This module holds information about players and their game state with other players -
-  what percentage of other's answers he/she got right and who's turn is to play. It associates every
+  This module holds and manages information about players and their game state with other players -
+  what percentage of other's answers they got right and who's turn it is to play. It associates every
   node with unique username so one's data is safe even if they're disconnected.
+
+  The server's inner state consists of the following data:
+    - clients map - all clients, their usernames and if they are online or not
+    - relations map - node-specific name for each username and scores for each pair of users that are playing
   """
 
   @doc """
@@ -28,8 +32,9 @@ defmodule Server.Worker do
   @doc """
   Called in case a registered client has disconnected.
   """
-  def handle_info({:DOWN, _ref, :process, {_, node}, _reason}, {relations, clients}) do
+  def handle_info({:DOWN, _ref, :process, {_, node}, reason}, {relations, clients}) do
     {name, _} = Map.get(clients, node)
+    Logger.info("Client #{name} has disconnected: #{reason}")
     {:noreply, {relations, Map.put(clients, node, {name, false})}}
   end
 
@@ -39,6 +44,7 @@ defmodule Server.Worker do
   def handle_call(:reconnect, {from, _}, {relations, clients} = state) do
     case get_username(from, state) do
       nil ->
+        # client tries to reconnect without ever being connected
         {:reply, :not_registered, state}
 
       name ->
@@ -60,6 +66,7 @@ defmodule Server.Worker do
             {:reply, :taken, {relations, clients}}
 
           false ->
+            Logger.info("New client registered under the username #{user}")
             updated_relations = Map.put(relations, user, %{node: node(from)})
             updated_clients = Map.put(clients, node(from), {user, true})
             Process.monitor({:quiz_client, node(from)})
@@ -67,6 +74,7 @@ defmodule Server.Worker do
         end
 
       _ ->
+        # client already registered under another username
         {:reply, :already_registered, state}
     end
   end
@@ -76,9 +84,9 @@ defmodule Server.Worker do
   Returns :unregistered otherwise.
   """
   def handle_call(:unregister, {from, _}, {relations, clients} = state) do
-    # Logger.info("Client #{from} with name #{user} is trying to unregister.")
     case get_username(from, state) do
       nil ->
+        # client tries to unregister but hasn't been registered
         {:reply, :not_registered, state}
 
       user ->
@@ -101,6 +109,7 @@ defmodule Server.Worker do
   def handle_call(:get_rating, {from, _}, {relations, _} = state) do
     case get_username(from, state) do
       nil ->
+        # client is not registered
         {:reply, :not_registered, state}
 
       of ->
@@ -118,16 +127,17 @@ defmodule Server.Worker do
   according percentages of right guessed questions for every user.
   """
   def handle_call({:get_rating, user2}, {from, _}, {relations, _} = state) do
-    # Logger.info("Client #{user1} is getting rate with #{user2}.")
     case get_username(from, state) do
       nil ->
         {:reply, :not_registered, state}
 
-      # {user1, _}
       user1 ->
         case Map.get(relations, user1) |> Map.get(user2) do
-          nil -> {:reply, :not_playing, state}
-          {_, _} -> {:reply, get_rating(user1, user2, relations), state}
+          nil ->
+            {:reply, :not_playing, state}
+
+          {_, _} ->
+            {:reply, get_rating(user1, user2, relations), state}
         end
     end
   end
@@ -168,6 +178,7 @@ defmodule Server.Worker do
               nil ->
                 %{node: to_node} = Map.get(relations, to)
                 GenServer.cast({:quiz_client, to_node}, {:add_invitation, from})
+                Logger.info("Client #{from} invited client #{to}")
 
                 {:noreply,
                  {%{relations | from => Map.put(Map.get(relations, from), to, {0, 0})}, clients}}
@@ -176,10 +187,15 @@ defmodule Server.Worker do
                 new_from_map = Map.put(Map.get(relations, from), to, {0, 0})
                 %{node: from_node} = Map.get(relations, from)
                 GenServer.cast({:quiz_client, from_node}, {:add_question, fetch_question(), to})
+                Logger.info("Clients #{from} and #{to} invited each other")
                 {:noreply, {Map.put(relations, from, new_from_map), clients}}
             end
 
           _game_state ->
+            Logger.info(
+              "Client #{from} tried to invite client #{to} but they are already playing"
+            )
+
             {:noreply, {relations, clients}}
         end
     end
@@ -192,6 +208,10 @@ defmodule Server.Worker do
   def handle_cast({:accept, from, to}, {relations, clients} = state) do
     case(Map.get(relations, from) == nil || Map.get(relations, to) == nil) do
       true ->
+        Logger.info(
+          "Client #{from} failed to accept client #{to}'s invitation: someone of them is not registered"
+        )
+
         {:noreply, state}
 
       false ->
@@ -199,28 +219,42 @@ defmodule Server.Worker do
           nil ->
             case Map.get(relations, to) |> Map.get(from) do
               nil ->
+                Logger.info(
+                  "Client #{from} failed to accept client #{to}'s invitation: no invitation"
+                )
+
                 {:noreply, state}
 
               _game_state ->
                 new_from_map = Map.put(Map.get(relations, from), to, {0, 0})
                 %{node: from_node} = Map.get(relations, from)
                 GenServer.cast({:quiz_client, from_node}, {:add_question, fetch_question(), to})
+                Logger.info("Client #{from} accepted client #{to}'s invitation")
                 {:noreply, {Map.put(relations, from, new_from_map), clients}}
             end
 
           _game_state ->
+            Logger.warn(
+              "Inconsistant state: client #{from} is trying to accept #{to}'s invitation but
+            #{from} had already invited #{to}"
+            )
+
             {:noreply, {relations, clients}}
         end
     end
   end
 
   @doc """
-  Client `from` is declining `to` 's invitation.
+  Client `from` is declining `to`'s invitation.
   In case `from` or `to` isn't registered or they're already playing nothing is done.
   """
   def handle_cast({:decline, from, to}, {relations, clients} = state) do
     case(Map.get(relations, from) == nil || Map.get(relations, to) == nil) do
       true ->
+        Logger.info(
+          "Client #{from} failed to decline client #{to}'s invitation: someone of them is not registered"
+        )
+
         {:noreply, state}
 
       false ->
@@ -228,27 +262,39 @@ defmodule Server.Worker do
           nil ->
             case Map.get(relations, to) |> Map.get(from) do
               nil ->
+                Logger.info(
+                  "Client #{from} failed to decline client #{to}'s invitation: no invitation"
+                )
+
                 {:noreply, state}
 
               _game_state ->
+                Logger.info("Client #{from} declined client #{to}'s invitation")
+
                 {:noreply,
                  {%{relations | to => Map.delete(Map.get(relations, to), from)}, clients}}
             end
 
           _game_state ->
+            Logger.warn(
+              "Inconsistant state: client #{from} is trying to decline #{to}'s invitation but
+            #{from} had already invited #{to}"
+            )
+
             {:noreply, {relations, clients}}
         end
     end
   end
 
   @doc """
-  User `from` has guessed `to`'s answer. The server sends the same question and `from`'s answer to
-  `to` so he/she can see if `from` had guessed and adds the guess to their game state.
+  User `from` has guessed `to`'s answer correctly. The server sends the same question and `from`'s
+   answer to `to` so he/she can see if `from` had guessed and adds the guess to their game state.
   """
   def handle_cast({:guess, from, to, q, answer, guess}, {relations, clients} = state)
       when answer == guess do
     case valid_username?(from, state) && valid_username?(to, state) do
       false ->
+        Logger.info("Client #{from} failed to guess #{to}'s answer: invalid username")
         {:noreply, state}
 
       true ->
@@ -259,17 +305,19 @@ defmodule Server.Worker do
         {guessed, missed} = Map.get(relations, from, %{}) |> Map.get(to)
         map1 = Map.get(relations, from)
         map2 = Map.put(map1, to, {guessed + 1, missed})
+        Logger.info("Client #{from} guessed #{guess}'s answer correctly. Answer was #{answer}")
         {:noreply, {%{relations | from => map2}, clients}}
     end
   end
 
   @doc """
-  User `from` has guessed `to`'s answer. The server sends the same question and `from`'s answer to
-  `to` so he/she can see if `from` had guessed and adds the guess to their game state.
+  User `from` has guessed `to`'s answer incorrectly. The server sends the same question and `from`'s
+  answer to `to` so he/she can see if `from` had guessed and adds the guess to their game state.
   """
-  def handle_cast({:guess, from, to, q, answer, _answer}, {relations, clients} = state) do
+  def handle_cast({:guess, from, to, q, answer, guess}, {relations, clients} = state) do
     case valid_username?(from, state) && valid_username?(to, state) do
       false ->
+        Logger.info("Client #{from} failed to guess #{to}'s answer: invalid username")
         {:noreply, state}
 
       true ->
@@ -280,6 +328,13 @@ defmodule Server.Worker do
         {guessed, missed} = Map.get(relations, from) |> Map.get(to)
         map1 = Map.get(relations, from)
         map2 = Map.put(map1, to, {guessed, missed + 1})
+
+        Logger.info(
+          "Client #{from} guessed #{guess}'s answer incorrectly. Guess was #{guess}, answer was #{
+            answer
+          }"
+        )
+
         {:noreply, {%{relations | from => map2}, clients}}
     end
   end
@@ -291,11 +346,16 @@ defmodule Server.Worker do
   def handle_cast({:answer, from, to, q, answer}, {relations, _} = state) do
     case valid_username?(from, state) && valid_username?(to, state) do
       false ->
+        Logger.info(
+          "Client #{from} failed to answer a question while playing with #{to}: invalid username"
+        )
+
         {:noreply, state}
 
       true ->
         %{node: to_node} = Map.get(relations, to)
         GenServer.cast({:quiz_client, to_node}, {:add_guess, from, q, answer})
+        Logger.info("Client #{from} answered #{answer} while playing with #{to}")
         {:noreply, state}
     end
   end
