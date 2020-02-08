@@ -19,5 +19,10 @@ erl_crash.dump
 # Also ignore archive artifacts (built via "mix archive.build").
 *.ez
 
+# custom log files
 /apps/server/server.log
 /apps/client/client.log
+/apps/*/app.log
+
+# ignore build dir
+/.elixir_ls/
