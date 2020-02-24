@@ -1,6 +1,6 @@
 defmodule Client.Worker do
   use GenServer
-
+  require Logger
   # TODO: client sending invitation/question/guess/answer to themselves
 
   @server_name Application.get_env(:client, :server_name, :quiz_server)
@@ -40,7 +40,7 @@ defmodule Client.Worker do
   Called when the user wants to register under name `username`. Once the user is registered he/she is
   associated with this username and it cannot be changed.
   Returns :taken if `username` is already taken. Retunrs :already_registered if user is already
-  registered under different username. Returns :ok otherwise.
+  registered under different username. Returns :registered otherwise.
   """
   def handle_call({:register, username}, _from, state) do
     {:reply, GenServer.call({:global, :quiz_server}, {:register, username}),
@@ -82,8 +82,13 @@ defmodule Client.Worker do
   Returns :error otherwise.
   """
   def handle_call(:get_to_answer, _, %{to_answer: questions} = state) do
-    {:reply, questions |> Enum.map(fn {user, q} -> {user, fetch_question(q)} end) |> Map.new(),
-     state}
+    Formatter.info(questions, label: "Questions")
+    # Logger.warn(questions)
+    {:reply,
+     questions
+     |> Enum.map(fn {user, q} -> {user, fetch_question(q)} end)
+    #  |> Formatter.info(label: "Debug: ")
+     |> Map.new(), state}
   end
 
   @doc """
@@ -182,6 +187,7 @@ defmodule Client.Worker do
   Called when server sends question for user to answer.
   """
   def handle_cast({:add_question, q, from}, %{to_answer: qs} = state) do
+    Logger.warn("Server sends question #{q}, #{Enum.count(qs)}")
     {:noreply, %{state | to_answer: Map.put(qs, from, q)}}
   end
 
@@ -233,10 +239,12 @@ defmodule Client.Worker do
   # PRIVATE#
 
   def fetch_question(question_number) do
+
     File.stream!(@questions_file)
     |> Enum.at(question_number - 1)
     |> Poison.decode()
     |> elem(1)
     |> List.to_tuple()
+    |> Formatter.info(label: "Fetching question No#{question_number}: ")
   end
 end

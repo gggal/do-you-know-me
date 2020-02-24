@@ -7,6 +7,13 @@ defmodule Client.Application do
 
   use Application
 
+  def main(args) do
+    options = [switches: [file: :string], aliases: [f: :file]]
+    {opts, _, _} = OptionParser.parse(args, options)
+    IO.inspect(opts, label: "Command Line Arguments")
+    # CLI.start_game()
+  end
+
   @doc """
   Starting the client application
   """
@@ -55,6 +62,7 @@ defmodule Client.Application do
   """
   def get_invitations() do
     Logger.info("Client is listing invitations")
+
     GenServer.call(:quiz_client, :see_invitations)
     |> Enum.map(fn {key, _val} -> key end)
   end
@@ -85,6 +93,7 @@ defmodule Client.Application do
 
   @doc """
   Gives answer to question sent from `other`. Answer should be :a, :b, :c.
+
   """
   def give_answer(other, answer) do
     Logger.info("Client's answer for #{other}'s question is #{answer}")
@@ -111,24 +120,27 @@ defmodule Client.Application do
   Obtain a question to be guessed by the user
   """
   def get_to_guess(other) do
-    Logger.info("Client is fetching a question to guess from #{other}")
-    GenServer.call(:quiz_client, :get_to_guess) |> Map.get(other, nil)
+    GenServer.call(:quiz_client, :get_to_guess)
+    |> Map.get(other, nil)
+    # |> Formatter.info(label: "Client's fetched question to guess from #{other}: ")
   end
 
   @doc """
   Obtain a question to be answered by the user
   """
   def get_to_answer(other) do
-    Logger.info("Client is fetching a question to answer from #{other}")
-    GenServer.call(:quiz_client, :get_to_answer) |> Map.get(other, nil)
+    GenServer.call(:quiz_client, :get_to_answer)
+    |> Map.get(other, nil)
+    # |> Formatter.info(label: "Client is fetching a question to answer from #{other}: ")
   end
 
   @doc """
   Obtain a question to be reviewed by the user
   """
   def get_to_see(other) do
-    Logger.info("Client is fetching a question to review from #{other}")
-    GenServer.call(:quiz_client, :get_to_see) |> Map.get(other, nil)
+    GenServer.call(:quiz_client, :get_to_see)
+    |> Map.get(other, nil)
+    # |> Formatter.info(label: "Client is fetching a question to review from #{other}")
   end
 
   @doc """
@@ -162,4 +174,7 @@ defmodule Client.Application do
     Logger.info("Client is listing all clients they're playing with")
     GenServer.call(:quiz_client, :get_related)
   end
+
+  # TODO: add functionality for listing only users eligable for inviting
+  # TODO: cant reinvite after the first invitation got declined
 end

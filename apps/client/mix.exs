@@ -11,6 +11,7 @@ defmodule Client.MixProject do
       lockfile: "../../mix.lock",
       elixir: "~> 1.6",
       start_permanent: Mix.env() == :prod,
+      escript: [main_module: CLI],
       deps: deps()
     ]
   end

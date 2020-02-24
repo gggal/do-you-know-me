@@ -25,6 +25,9 @@ config :logger,
 
 config :logger, :server_error_log,
   path: "app.log",
+  # format: "$time $metadata[$level] $message\n",
+  format: {Formatter, :format},
+  metadata: [:file, :function, :line],
   level: :info
 
 # It is also possible to import configuration files, relative to this

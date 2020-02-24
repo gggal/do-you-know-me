@@ -5,6 +5,7 @@ defmodule Server.Application do
   """
 
   use Application
+  require Logger
 
   def start(_type, _args) do
     import Supervisor.Spec
@@ -15,6 +16,7 @@ defmodule Server.Application do
           worker(Server.Worker, [])
         ]
 
+        Logger.info("Starting server...")
         opts = [strategy: :one_for_one, name: Server.Supervisor]
         Supervisor.start_link(children, opts)
 

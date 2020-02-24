@@ -1,0 +1,6 @@
+22:01:42.867 [info] Protocol 'inet_tcp': register/listen error: econnrefused
+
+22:01:42.884 [info] Application server exited: Server.Application.start(:normal, []) returned an error: {:error, {{:shutdown, {:failed_to_start_child, :net_kernel, {:EXIT, :nodistribution}}}, {:child, :undefined, :net_sup_dynamic, {:erl_distribution, :start_link, [[:"server@127.0.0.1", :longnames, 15000], false]}, :permanent, 1000, :supervisor, [:erl_distribution]}}}
+21:42:41.730 [info] Protocol 'inet_tcp': register/listen error: econnrefused
+
+21:42:41.745 [info] Application server exited: Server.Application.start(:normal, []) returned an error: {:error, {{:shutdown, {:failed_to_start_child, :net_kernel, {:EXIT, :nodistribution}}}, {:child, :undefined, :net_sup_dynamic, {:erl_distribution, :start_link, [[:"server@127.0.0.1", :longnames, 15000], false]}, :permanent, 1000, :supervisor, [:erl_distribution]}}}
