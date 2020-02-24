@@ -45,7 +45,7 @@ defmodule Invitation do
     case user_input do
       1 ->
         Client.Application.accept(other_user)
-        :timer.sleep(5_000)
+        :timer.sleep(2_000)
         transition(1, other_user)
 
       2 ->

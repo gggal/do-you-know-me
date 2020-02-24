@@ -82,7 +82,7 @@ defmodule Client.Worker do
   Returns :error otherwise.
   """
   def handle_call(:get_to_answer, _, %{to_answer: questions} = state) do
-    Formatter.info(questions, label: "Questions")
+    # Formatter.info(questions, label: "Questions")
     # Logger.warn(questions)
     {:reply,
      questions
@@ -169,6 +169,7 @@ defmodule Client.Worker do
   """
   def handle_cast({:answer, to, answer}, %{username: from, to_answer: q_map} = state)
       when answer == :a or answer == :b or answer == :c do
+        Logger.warn("heyya, received a,b,c")
     case Map.get(q_map, to) do
       nil ->
         {:noreply, state}
@@ -179,7 +180,8 @@ defmodule Client.Worker do
     end
   end
 
-  def handle_cast({:answer, _, _}, state) do
+  def handle_cast({:answer, _, asd}, state) do
+    Logger.warn("received #{asd}")
     {:noreply, state}
   end
 
@@ -245,6 +247,6 @@ defmodule Client.Worker do
     |> Poison.decode()
     |> elem(1)
     |> List.to_tuple()
-    |> Formatter.info(label: "Fetching question No#{question_number}: ")
+    # |> Formatter.info(label: "Fetching question No#{question_number}: ")
   end
 end

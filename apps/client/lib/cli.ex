@@ -88,4 +88,20 @@ defmodule CLI do
     IO.puts("b) " <> b <> "\n")
     IO.puts("c) " <> c <> "\n")
   end
+
+  def read_answer(message) do
+    user_input =
+      IO.gets(message)
+      |> String.replace("\n", "")
+      |> String.replace("\r", "")
+
+    case user_input do
+      valid when valid == "a" or valid == "b" or valid == "c" ->
+        {:ok, String.to_atom(valid)}
+
+      invalid ->
+        {:err, "Possibles answers are a,b or c. Received #{invalid}"}
+    end
+  end
+
 end

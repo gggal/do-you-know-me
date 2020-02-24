@@ -12,13 +12,8 @@ defmodule Game do
   """
   @impl Screen
   def show(other_user) do
-    IO.puts(
-      case Client.Application.get_to_see(other_user) do
-        nil -> "Your game with #{other_user} has began.\n"
-        {question, answer, guess} -> "Your question on the previous game was \n#{question}\n
-      your answer was #{answer}, #{other_user}'s quess is #{guess}"
-      end
-    )
+    IO.puts("Your input has been sent to the server. If you don't want to wait
+    for #{other_user} to respond, press a key to go back.")
   end
 
   @doc """
@@ -26,8 +21,6 @@ defmodule Game do
   """
   @impl Screen
   def prompt_and_read_input(other_user) do
-    Client.Application.get_to_guess(other_user) |> ask_to_guess(other_user)
-    Client.Application.get_to_answer(other_user) |> ask_to_answer(other_user)
   end
 
   @doc """
@@ -38,21 +31,7 @@ defmodule Game do
   @impl Screen
   def run(other_user) do
     show(other_user)
-
-    # {first_guess, sec_answer} =
-    CLI.loop_until_correct_input(fn -> prompt_and_read_input(other_user) end)
-
-    # case {Client.Application.give_guess(other_user, first_guess),
-    #      Client.Application.give_answer(other_user, sec_answer)} do
-    #  {true, true} ->
-    #    IO.puts(
-    #      "Your input have been sent to the server. Please wait for #{other_user}'s response."
-    #    )
-
-    #  _ ->
-    #    IO.puts("Internal error occured while trying to process your input...")
-    # end
-
+    :timer.sleep(5_000)
     transition(other_user)
   end
 
@@ -61,55 +40,71 @@ defmodule Game do
   """
   @impl Screen
   def transition(other_user) do
-    if Client.Application.get_to_answer(other_user) == nil do
-      :timer.sleep(100)
-      transition(:dummy)
+
+    spawn fn -> IO.gets(""); send(self(), :back) end
+    spawn fn -> ready(self(), other_user) end
+
+
+    receive do
+      :back -> {:ok, &MainMenu.run/0}
+      :ready -> {:ok, fn -> AnswerQuestion.run(other_user) end}
     end
 
-    {:ok, &run/1}
+    # case Client.Application.get_to_answer(other_user) do
+    #   nil -> {:ok, &MainMenu.run/0}
+    #   _ -> {:ok, fn -> AnswerQuestion.run(other_user) end}
+    # end
+  end
+
+  defp ready(pid, other_user) do
+    :timer.sleep(1_000)
+    case Client.Application.get_to_answer(other_user) do
+      nil -> send(pid, :ready)
+      _ -> ready(pid, other_user)
+    end
   end
 
   #### PRIVATE ####
 
-  defp ask_to_guess(nil, _), do: :ok
+  # defp ask_to_guess(nil, _), do: :ok
 
-  defp ask_to_guess({q, ans}, to) do
-    IO.puts(q)
+  # defp ask_to_guess({q, ans}, to) do
+  #   IO.puts(q)
 
-    case read_answer("\nGuess other's answer:\n") do
-      {:ok, correct} when correct == ans ->
-        IO.puts("You guessed correctly.")
-        Client.Application.give_guess(to, correct)
+  #   case read_answer("\nGuess other's answer:\n") do
+  #     {:ok, correct} when correct == ans ->
+  #       IO.puts("You guessed correctly.")
+  #       Client.Application.give_guess(to, correct)
 
-      {:ok, wrong} ->
-        IO.puts("Your guess was wrong. Other's answer is #{ans}")
-        Client.Application.give_guess(to, wrong)
+  #     {:ok, wrong} ->
+  #       IO.puts("Your guess was wrong. Other's answer is #{ans}")
+  #       Client.Application.give_guess(to, wrong)
 
-      {:err, _err_msg} ->
-        IO.puts("TODO should force user to input correct letter")
-    end
-  end
+  #     {:err, _err_msg} ->
+  #       IO.puts("TODO should force user to input correct letter")
+  #   end
+  # end
 
-  defp ask_to_answer(q, to) do
-    # IO.puts(q)
-    CLI.print_question(q)
-    {:ok, answer} = read_answer("\nAnswer the question for yourself:\n")
-    Client.Application.give_answer(to, answer)
-    {:ok, answer}
-  end
+  # defp ask_to_answer(q, to) do
+  #   # IO.puts(q)
+  #   CLI.print_question(q)
+  #   {:ok, answer} = read_answer("\nAnswer the question for yourself:\n")
+  #   Client.Application.give_answer(to, answer)
+  #   {:ok, answer}
+  # end
 
-  defp read_answer(message) do
-    user_input =
-      IO.gets(message)
-      |> String.replace("\n", "")
-      |> String.replace("\r", "")
+  # defp read_answer(message) do
+  #   user_input =
+  #     IO.gets(message)
+  #     |> String.replace("\n", "")
+  #     |> String.replace("\r", "")
 
-    case user_input do
-      valid when valid == "a" or valid == "b" or valid == "c" ->
-        {:ok, valid}
+  #   case user_input do
+  #     valid when valid == "a" or valid == "b" or valid == "c" ->
+  #       {:ok, valid}
 
-      invalid ->
-        {:err, "Possibles answers are a,b or c. Received #{invalid}"}
-    end
-  end
+  #     invalid ->
+  #       {:err, "Possibles answers are a,b or c. Received #{invalid}"}
+  #   end
+  # end
 end

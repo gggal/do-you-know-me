@@ -7,9 +7,6 @@ defmodule Formatter do
     # timestamp
     "#{F.format_date(elem(timestamp, 0))} #{F.format_time(elem(timestamp, 1))} " <>
       "#{metadata[:file]}:" <>
-      "#{metadata[:line]}: " <>
-      "#{metadata[:function]} " <>
-      "[#{level}] " <>
-      "#{message}\n"
+      "#{metadata[:line]}: " <> "#{metadata[:function]} " <> "[#{level}] " <> "#{message}\n"
   end
 end
