@@ -181,10 +181,11 @@ defmodule Server.Worker do
                 Logger.info("Client #{from} invited client #{to}")
 
                 {:noreply,
-                 {%{relations | from => Map.put(Map.get(relations, from), to, {0, 0})}, clients}}
+                 {%{relations | from => Map.put(Map.get(relations, from), to, {{0, 0}, true})},
+                  clients}}
 
               _game_state ->
-                new_from_map = Map.put(Map.get(relations, from), to, {0, 0})
+                new_from_map = Map.put(Map.get(relations, from), to, {{0, 0}, true})
                 %{node: from_node} = Map.get(relations, from)
                 GenServer.cast({:quiz_client, from_node}, {:add_question, fetch_question(), to})
                 Logger.info("Clients #{from} and #{to} invited each other")
@@ -226,7 +227,7 @@ defmodule Server.Worker do
                 {:noreply, state}
 
               _game_state ->
-                new_from_map = Map.put(Map.get(relations, from), to, {0, 0})
+                new_from_map = Map.put(Map.get(relations, from), to, {{0, 0}, true})
                 %{node: from_node} = Map.get(relations, from)
                 GenServer.cast({:quiz_client, from_node}, {:add_question, fetch_question(), to})
                 Logger.info("Client #{from} accepted client #{to}'s invitation")
@@ -301,10 +302,10 @@ defmodule Server.Worker do
         %{node: from_node} = Map.get(relations, from)
         %{node: to_node} = Map.get(relations, to)
         GenServer.cast({:quiz_client, to_node}, {:add_result, from, q, answer, guess})
-        GenServer.cast({:quiz_client, from_node}, {:add_question, fetch_question(), to})
-        {guessed, missed} = Map.get(relations, from, %{}) |> Map.get(to)
+        GenServer.cast({:quiz_client, to_node}, {:add_question, fetch_question(), from})
+        {{guessed, missed}, is_first} = Map.get(relations, from, %{}) |> Map.get(to)
         map1 = Map.get(relations, from)
-        map2 = Map.put(map1, to, {guessed + 1, missed})
+        map2 = Map.put(map1, to, {{guessed + 1, missed}, is_first})
         Logger.info("Client #{from} guessed #{guess}'s answer correctly. Answer was #{answer}")
         {:noreply, {%{relations | from => map2}, clients}}
     end
@@ -321,13 +322,14 @@ defmodule Server.Worker do
         {:noreply, state}
 
       true ->
-        %{node: from_node} = Map.get(relations, from)
+        # %{node: from_node} = Map.get(relations, from)
         %{node: to_node} = Map.get(relations, to)
-        GenServer.cast({:quiz_client, to_node}, {:add_result, from, q, answer, answer})
-        GenServer.cast({:quiz_client, from_node}, {:add_question, fetch_question(), to})
-        {guessed, missed} = Map.get(relations, from) |> Map.get(to)
+        GenServer.cast({:quiz_client, to_node}, {:add_result, from, q, answer, guess})
+        # GenServer.cast({:quiz_client, from_node}, {:add_question, fetch_question(), to})
+        GenServer.cast({:quiz_client, to_node}, {:add_question, fetch_question(), from})
+        {{guessed, missed}, is_first} = Map.get(relations, from) |> Map.get(to)
         map1 = Map.get(relations, from)
-        map2 = Map.put(map1, to, {guessed, missed + 1})
+        map2 = Map.put(map1, to, {{guessed, missed + 1}, is_first})
 
         Logger.info(
           "Client #{from} guessed #{guess}'s answer incorrectly. Guess was #{guess}, answer was #{
@@ -343,7 +345,7 @@ defmodule Server.Worker do
   User `from` has answered to a question in a game with `to`. The server sends the same question
   to `to` who has to guess `from`'s answer.
   """
-  def handle_cast({:answer, from, to, q, answer}, {relations, _} = state) do
+  def handle_cast({:answer, from, to, q, answer}, {relations, clients} = state) do
     case valid_username?(from, state) && valid_username?(to, state) do
       false ->
         Logger.info(
@@ -355,8 +357,16 @@ defmodule Server.Worker do
       true ->
         %{node: to_node} = Map.get(relations, to)
         GenServer.cast({:quiz_client, to_node}, {:add_guess, from, q, answer})
+
+        # in case this it the first level ask a question to the other user
+        Logger.info("About to add answer for user #{to} #{first_lvl?(from, to, relations)}")
+
+        if first_lvl?(from, to, relations) do
+          GenServer.cast({:quiz_client, to_node}, {:add_question, fetch_question(), from})
+        end
+
         Logger.info("Client #{from} answered #{answer} while playing with #{to}")
-        {:noreply, state}
+        {:noreply, {update_related(relations, from, to), clients}}
     end
   end
 
@@ -369,15 +379,49 @@ defmodule Server.Worker do
   defp sum_rating({0, 0}), do: 100.0
   defp sum_rating({per1, per2}), do: 100 * per1 / (per1 + per2)
 
+  defp first_lvl?(from, to, all) do
+    Logger.info("#{inspect(all)}")
+
+    case Map.get(all, from, %{}) |> Map.get(to) do
+      {_, false} ->
+        false
+
+      {_, true} ->
+        true
+    end
+  end
+
+  defp update_related(related, from, to) do
+    case Map.get(related, from, %{}) |> Map.get(to) do
+      nil ->
+        related
+
+      {_, _} ->
+        case Map.get(related, to, %{}) |> Map.get(from) do
+          nil ->
+            related
+
+          {_, false} ->
+            related
+
+          {pair, true} ->
+            %{
+              %{related | from => %{Map.get(related, from) | to => {pair, false}}}
+              | to => %{Map.get(related, to) | from => {pair, false}}
+            }
+        end
+    end
+  end
+
   defp get_rating(from, to, all) do
     case Map.get(all, from, %{}) |> Map.get(to) do
       nil ->
         {to, -1, -1}
 
-      {_, _} = guesses ->
+      {{_, _} = guesses, _} ->
         case Map.get(all, to, %{}) |> Map.get(from) do
           nil -> {to, 1, -1}
-          {_, _} = o_guesses -> {to, sum_rating(guesses), sum_rating(o_guesses)}
+          {{_, _} = o_guesses, _} -> {to, sum_rating(guesses), sum_rating(o_guesses)}
         end
     end
   end

@@ -32,8 +32,8 @@ defmodule Screen do
   actual logic.
   Returns the run function of the next form to be displayed.
   """
-  @callback run(specific) :: fun()
-  @callback run() :: fun()
+  @callback run(specific) :: {:ok, fun()} | :exit | {:err, String.t()}
+  @callback run() :: {:ok, fun()}
   @optional_callbacks run: 0, run: 1
 
   @doc """

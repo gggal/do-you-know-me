@@ -16,7 +16,7 @@ defmodule OnlineUsers do
     Client.Application.list_registered()
     |> Enum.concat(["back"])
     |> Enum.with_index(1)
-    |> Enum.map(fn {user, idx} -> "#{idx}. #{user}\n" end)
+    |> Enum.map(fn {user, idx} -> "        #{idx}. #{user}\n" end)
     |> Enum.join()
     |> IO.puts()
   end
@@ -27,7 +27,7 @@ defmodule OnlineUsers do
   # TODO list users you're not playing it (diff with list_related)
   @impl Screen
   def prompt_and_read_input() do
-    user_input = CLI.read_format_int("Choose a number to send invitation to: \n")
+    user_input = CLI.read_format_int("Choose a number to send invitation to: ")
     to = Client.Application.list_registered() |> Enum.count()
 
     case Client.Application.list_registered()

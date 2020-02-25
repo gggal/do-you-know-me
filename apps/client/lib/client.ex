@@ -120,9 +120,15 @@ defmodule Client.Application do
   Obtain a question to be guessed by the user
   """
   def get_to_guess(other) do
-    GenServer.call(:quiz_client, :get_to_guess)
-    |> Map.get(other, nil)
-    # |> Formatter.info(label: "Client's fetched question to guess from #{other}: ")
+    # GenServer.call(:quiz_client, :get_to_guess)
+    # |> Map.get(other, nil)
+
+    a =
+      GenServer.call(:quiz_client, :get_to_guess)
+      |> Map.get(other, nil)
+
+    Logger.error("to_guess: #{inspect(a)}")
+    a
   end
 
   @doc """
@@ -131,6 +137,7 @@ defmodule Client.Application do
   def get_to_answer(other) do
     GenServer.call(:quiz_client, :get_to_answer)
     |> Map.get(other, nil)
+
     # |> Formatter.info(label: "Client is fetching a question to answer from #{other}: ")
   end
 
@@ -140,6 +147,7 @@ defmodule Client.Application do
   def get_to_see(other) do
     GenServer.call(:quiz_client, :get_to_see)
     |> Map.get(other, nil)
+
     # |> Formatter.info(label: "Client is fetching a question to review from #{other}")
   end
 
@@ -164,7 +172,10 @@ defmodule Client.Application do
   """
   def list_registered() do
     Logger.info("Client is listing all registered clients")
+    who_am_i = username()
+
     GenServer.call(:quiz_client, :list_registered)
+    |> Enum.filter(fn user -> user != who_am_i end)
   end
 
   @doc """
@@ -172,7 +183,10 @@ defmodule Client.Application do
   """
   def list_related() do
     Logger.info("Client is listing all clients they're playing with")
+    who_am_i = username()
+
     GenServer.call(:quiz_client, :get_related)
+    |> Enum.filter(fn user -> user != who_am_i end)
   end
 
   # TODO: add functionality for listing only users eligable for inviting

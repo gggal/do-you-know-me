@@ -10,7 +10,7 @@ defmodule Invitation do
   """
   @impl Screen
   def show() do
-    IO.puts("
+    IO.puts("Accept/decline:
         1) accept
         2) decline
         3) back")
@@ -21,7 +21,7 @@ defmodule Invitation do
   """
   @impl Screen
   def prompt_and_read_input() do
-    user_input = CLI.read_format_int("Choose a number:\n")
+    user_input = CLI.read_format_int("\nChoose a number: ")
 
     case user_input do
       valid when valid >= 1 or valid <= 3 ->

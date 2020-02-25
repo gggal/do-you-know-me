@@ -23,7 +23,7 @@ defmodule MainMenu do
   """
   @impl Screen
   def prompt_and_read_input() do
-    user_input = CLI.read_format_int("Choose a number:\n")
+    user_input = CLI.read_format_int("Choose a number: ")
 
     case user_input do
       valid when valid > 0 and valid <= 5 ->

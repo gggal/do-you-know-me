@@ -7,10 +7,7 @@ defmodule Formatter do
     # timestamp
     "#{F.format_date(elem(timestamp, 0))} #{F.format_time(elem(timestamp, 1))} " <>
       "#{metadata[:file]}:" <>
-      "#{metadata[:line]}: " <>
-      "#{metadata[:function]} " <>
-      "[#{level}] " <>
-      "#{message}\n"
+      "#{metadata[:line]}: " <> "#{metadata[:function]} " <> "[#{level}] " <> "#{message}\n"
   end
 
   @spec info(any, [{:label, any}, ...]) :: :ok | {:error, any}
@@ -18,12 +15,9 @@ defmodule Formatter do
     Logger.info(text <> "#{obj}")
     obj
   end
-
 end
 
-
 defimpl String.Chars, for: Map do
-
   def to_string(map) do
     map
     |> Enum.map(fn {k, v} -> "#{k}: #{v}" end)
@@ -32,10 +26,9 @@ defimpl String.Chars, for: Map do
 end
 
 defimpl String.Chars, for: Tuple do
-
   def to_string(tuple) do
     tuple
-    |> Tuple.to_list
+    |> Tuple.to_list()
     |> Enum.join(", ")
   end
 end

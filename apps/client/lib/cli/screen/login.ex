@@ -19,7 +19,7 @@ defmodule Login do
   @impl Screen
   def prompt_and_read_input() do
     username =
-      IO.gets("Please enter your name:\n")
+      IO.gets("Please enter your name: ")
       |> String.replace("\n", "")
       |> String.replace("\r", "")
 

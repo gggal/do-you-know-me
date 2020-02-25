@@ -17,7 +17,7 @@ defmodule Scores do
         IO.puts("Your scores:\n")
 
         ratings
-        |> Enum.map(fn {other_user, s1, s2} -> "#{other_user}: #{s1}% #{s2}%\n" end)
+        |> Enum.map(fn {other_user, s1, s2} -> "        #{other_user}: #{s1}% #{s2}%\n" end)
         |> Enum.join()
         |> IO.puts()
     end
@@ -28,6 +28,7 @@ defmodule Scores do
   """
   @impl Screen
   def prompt_and_read_input() do
+    {:ok, :dummy}
   end
 
   @doc """

@@ -10,13 +10,12 @@ defmodule InvitationMenu do
   """
   @impl Screen
   def show() do
-    IO.puts("
-        Your invitations are:\n")
+    IO.puts("Your invitations are:\n")
 
     Client.Application.get_invitations()
     |> Enum.concat(["back"])
     |> Enum.with_index(1)
-    |> Enum.map(fn {user, idx} -> "#{idx}. #{user}\n" end)
+    |> Enum.map(fn {user, idx} -> "        #{idx}. #{user}\n" end)
     |> Enum.join()
     |> IO.puts()
   end
@@ -27,7 +26,7 @@ defmodule InvitationMenu do
   """
   @impl Screen
   def prompt_and_read_input() do
-    user_input = CLI.read_format_int("Choose a number:")
+    user_input = CLI.read_format_int("Choose a number: ")
     to = Client.Application.get_invitations() |> Enum.count()
 
     case Client.Application.get_invitations()

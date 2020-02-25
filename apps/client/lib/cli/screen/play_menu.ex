@@ -15,7 +15,7 @@ defmodule PlayMenu do
     Client.Application.list_related()
     |> Enum.concat(["back"])
     |> Enum.with_index(1)
-    |> Enum.map(fn {user, idx} -> "#{idx}: #{user}\n" end)
+    |> Enum.map(fn {user, idx} -> "        #{idx}: #{user}\n" end)
     |> Enum.join()
     |> IO.puts()
   end
@@ -25,7 +25,7 @@ defmodule PlayMenu do
   """
   @impl Screen
   def prompt_and_read_input() do
-    user_input = CLI.read_format_int("Choose a user to start playing with:\n")
+    user_input = CLI.read_format_int("Choose a user to start playing with: ")
     all_related = Client.Application.list_related()
 
     case all_related |> Enum.concat(["back"]) |> CLI.read_input_menu(user_input) do

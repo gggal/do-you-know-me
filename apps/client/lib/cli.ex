@@ -15,7 +15,7 @@ defmodule CLI do
   """
   def start_game() do
     print_separator()
-    IO.puts("welcome to do_you_know_me command line interface\n")
+    IO.puts("\t\tDO YOU KNOW ME\n")
 
     curr_screen_fn = &Login.run/0
 
@@ -63,7 +63,6 @@ defmodule CLI do
     |> String.replace("\r", "")
   end
 
-  @spec read_format_int(any) :: :error | {integer, binary}
   def read_format_int(msg) do
     case IO.gets(msg) |> Integer.parse() do
       :error -> :err
@@ -84,9 +83,9 @@ defmodule CLI do
   def print_question({question, a, b, c}) do
     IO.puts(question)
     IO.puts("\n")
-    IO.puts("a) " <> a <> "\n")
-    IO.puts("b) " <> b <> "\n")
-    IO.puts("c) " <> c <> "\n")
+    IO.puts("        a) " <> a <> "\n")
+    IO.puts("        b) " <> b <> "\n")
+    IO.puts("        c) " <> c <> "\n")
   end
 
   def read_answer(message) do
@@ -103,5 +102,4 @@ defmodule CLI do
         {:err, "Possibles answers are a,b or c. Received #{invalid}"}
     end
   end
-
 end

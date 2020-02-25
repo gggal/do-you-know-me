@@ -43,6 +43,8 @@ defmodule Client.Worker do
   registered under different username. Returns :registered otherwise.
   """
   def handle_call({:register, username}, _from, state) do
+    # Logger.warn("State: #{inspect(state)}")
+
     {:reply, GenServer.call({:global, :quiz_server}, {:register, username}),
      Map.put(state, :username, username)}
   end
@@ -59,10 +61,12 @@ defmodule Client.Worker do
   Returns client's username if they're registered.
   """
   def handle_call(:username, _from, %{username: username} = state) do
+    # Logger.warn("State: #{inspect(state)}")
     {:reply, username, state}
   end
 
   def handle_call(:username, _from, state) do
+    # Logger.warn("State: #{inspect(state)}")
     {:reply, :error, state}
   end
 
@@ -71,9 +75,11 @@ defmodule Client.Worker do
   Returns :error otherwise.
   """
   def handle_call(:get_to_guess, _, %{to_guess: questions} = state) do
+    # Logger.warn("State: #{inspect(state)}")
+
     {:reply,
      questions
-     |> Enum.map(fn {user, {q, _ans}} -> {user, {fetch_question(q)}} end)
+     |> Enum.map(fn {user, {q, ans}} -> {user, {fetch_question(q), ans}} end)
      |> Map.new(), state}
   end
 
@@ -84,10 +90,12 @@ defmodule Client.Worker do
   def handle_call(:get_to_answer, _, %{to_answer: questions} = state) do
     # Formatter.info(questions, label: "Questions")
     # Logger.warn(questions)
+    # Logger.warn("State: #{inspect(state)}")
+
     {:reply,
      questions
      |> Enum.map(fn {user, q} -> {user, fetch_question(q)} end)
-    #  |> Formatter.info(label: "Debug: ")
+     #  |> Formatter.info(label: "Debug: ")
      |> Map.new(), state}
   end
 
@@ -96,10 +104,12 @@ defmodule Client.Worker do
   Returns :error otherwise.
   """
   def handle_call(:get_to_see, _, %{to_see: questions} = state) do
+    Logger.warn("State: #{inspect(state)}")
+
     {:reply,
      questions
      |> Enum.map(fn {user, {q, ans, guess}} -> {user, {fetch_question(q), ans, guess}} end)
-     |> Map.new(), Map.delete(state, :to_see)}
+     |> Map.new(), Map.put(state, :to_see, %{})}
   end
 
   @doc """
@@ -108,6 +118,7 @@ defmodule Client.Worker do
   percentages of right guessed questions for every user.
   """
   def handle_call(:get_rating, _, state) do
+    # Logger.warn("State: #{inspect(state)}")
     {:reply, GenServer.call({:global, @server_name}, :get_rating), state}
   end
 
@@ -116,6 +127,7 @@ defmodule Client.Worker do
   according percentages of right guessed questions for every user.
   """
   def handle_call({:get_rating, with}, _, state) do
+    # Logger.warn("State: #{inspect(state)}")
     {:reply, GenServer.call({:global, @server_name}, {:get_rating, with}), state}
   end
 
@@ -135,7 +147,13 @@ defmodule Client.Worker do
   Returns list of all registered clients
   """
   def handle_call(:list_registered, _, state) do
+    # Logger.warn("State: #{inspect(state)}")
     {:reply, GenServer.call({:global, @server_name}, :list_registered), state}
+  end
+
+  def handle_call(:get_related, _, state) do
+    # Logger.warn("State: #{inspect(state)}")
+    {:reply, GenServer.call({:global, @server_name}, :list_related), state}
   end
 
   @doc """
@@ -145,16 +163,20 @@ defmodule Client.Worker do
   """
   def handle_call({:guess, from, guess}, _, %{username: name, to_guess: guess_map} = state)
       when guess == :a or guess == :b or guess == :c do
+    # Logger.warn("State: #{inspect(state)}")
+
     case Map.get(guess_map, from) do
       nil ->
         {:reply, :error, state}
 
       {q, ^guess} ->
+        Logger.warn("Guess is #{guess} and its correct")
         GenServer.cast({:global, @server_name}, {:guess, name, from, q, guess, guess})
         {:reply, true, %{state | to_guess: Map.delete(guess_map, from)}}
 
       {q, ans} ->
-        GenServer.cast({:global, @server_name}, {:guess, name, from, q, guess, ans})
+        Logger.warn("Guess is #{guess} and answer is #{ans}")
+        GenServer.cast({:global, @server_name}, {:guess, name, from, q, ans, guess})
         {:reply, false, %{state | to_guess: Map.delete(guess_map, from)}}
     end
   end
@@ -169,7 +191,8 @@ defmodule Client.Worker do
   """
   def handle_cast({:answer, to, answer}, %{username: from, to_answer: q_map} = state)
       when answer == :a or answer == :b or answer == :c do
-        Logger.warn("heyya, received a,b,c")
+    # Logger.warn("State: #{inspect(state)}")
+
     case Map.get(q_map, to) do
       nil ->
         {:noreply, state}
@@ -180,30 +203,37 @@ defmodule Client.Worker do
     end
   end
 
-  def handle_cast({:answer, _, asd}, state) do
-    Logger.warn("received #{asd}")
+  def handle_cast({:answer, _, _}, state) do
     {:noreply, state}
   end
 
   @doc """
   Called when server sends question for user to answer.
   """
-  def handle_cast({:add_question, q, from}, %{to_answer: qs} = state) do
-    Logger.warn("Server sends question #{q}, #{Enum.count(qs)}")
+  def handle_cast({:add_question, q, from}, %{to_answer: qs, username: username} = state) do
+    # Logger.warn("State: #{inspect(state)}")
+    Logger.warn("Server sends question #{q}, #{Enum.count(qs)} to answer to #{username}")
     {:noreply, %{state | to_answer: Map.put(qs, from, q)}}
   end
 
   @doc """
   Called when server sends question for user to guess.
   """
-  def handle_cast({:add_guess, from, question, ans}, %{to_guess: gs} = state) do
+  def handle_cast({:add_guess, from, question, ans}, %{to_guess: gs, username: username} = state) do
+    Logger.warn("State: #{inspect(state)}")
+    Logger.warn("Server sends question to guess to #{username}")
     {:noreply, %{state | to_guess: Map.put(gs, from, {question, ans})}}
   end
 
   @doc """
   Called when server sends question that another user tried to guess.
   """
-  def handle_cast({:add_result, from, question, ans, guess}, %{to_see: rs} = state) do
+  def handle_cast(
+        {:add_result, from, question, ans, guess},
+        %{to_see: rs, username: username} = state
+      ) do
+    Logger.warn("answer #{ans} #{guess}")
+    Logger.warn("Server sends result to see to #{username}")
     {:noreply, %{state | to_see: Map.put(rs, from, {question, ans, guess})}}
   end
 
@@ -241,12 +271,12 @@ defmodule Client.Worker do
   # PRIVATE#
 
   def fetch_question(question_number) do
-
     File.stream!(@questions_file)
     |> Enum.at(question_number - 1)
     |> Poison.decode()
     |> elem(1)
     |> List.to_tuple()
+
     # |> Formatter.info(label: "Fetching question No#{question_number}: ")
   end
 end
