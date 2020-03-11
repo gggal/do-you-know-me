@@ -2,6 +2,14 @@
 # and its dependencies with the aid of the Mix.Config module.
 use Mix.Config
 
+config :server, DB.Repo,
+  database: "dykm_repo",
+  username: "dykm_user",
+  password: "dykm_password",
+  hostname: "localhost"
+
+config :server, ecto_repos: [DB.Repo]
+
 # By default, the umbrella project as well as each child
 # application will require this configuration file, ensuring
 # they all use the same configuration. While one could

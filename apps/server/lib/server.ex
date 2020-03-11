@@ -13,7 +13,8 @@ defmodule Server.Application do
     case Server.Connectivity.try_make_accessible() do
       {:ok, _} ->
         children = [
-          worker(Server.Worker, [])
+          worker(Server.Worker, []),
+          supervisor(DB.Repo, [])
         ]
 
         Logger.info("Starting server...")
