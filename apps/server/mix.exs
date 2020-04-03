@@ -28,6 +28,7 @@ defmodule Server.MixProject do
   defp deps do
     [
       {:logger_file_backend, "~> 0.0.11", runtime: false},
+      {:mox, "~> 0.5.0", only: :test},
       {:ecto_sql, "~> 3.3.4"},
       {:postgrex, ">= 0.10.0"}
 

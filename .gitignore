@@ -23,6 +23,10 @@ erl_crash.dump
 /apps/server/server.log
 /apps/client/client.log
 /apps/*/app.log
+/app.log
 
 # ignore build dir
 /.elixir_ls/
+
+# ignore vscode dir
+/.vscode/*
