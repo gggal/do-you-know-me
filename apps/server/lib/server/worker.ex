@@ -3,6 +3,9 @@ defmodule Server.Worker do
 
   require Logger
 
+  alias Server.User
+  alias Server.Invitation
+
   @questions_count 100
 
   @moduledoc """
@@ -48,6 +51,7 @@ defmodule Server.Worker do
         {:reply, :not_registered, state}
 
       name ->
+        # check if the given password is correct - if is, send everything to the user
         send_after_reconnect(name, state)
         {:reply, :ok, {relations, Map.put(clients, node(from), {name, true})}}
     end
@@ -61,21 +65,54 @@ defmodule Server.Worker do
   def handle_call({:register, user}, {from, _}, {relations, clients} = state) do
     case get_username(from, state) do
       nil ->
-        case Map.has_key?(relations, user) do
+        case User.exists?(user) do
           true ->
             {:reply, :taken, {relations, clients}}
 
           false ->
             Logger.info("New client registered under the username #{user}")
+            User.insert(user)
+
+            # %User{username: user, password: "default_password"} |> DB.Repo.insert()
+
             updated_relations = Map.put(relations, user, %{node: node(from)})
             updated_clients = Map.put(clients, node(from), {user, true})
             Process.monitor({:quiz_client, node(from)})
             {:reply, :registered, {updated_relations, updated_clients}}
         end
 
-      _ ->
-        # client already registered under another username
+      old_username ->
+        Logger.error(
+          "Client registered once as #{old_username} is trying to register again as username #{
+            user
+          }"
+        )
+
         {:reply, :already_registered, state}
+    end
+  end
+
+  def handle_call({:login, user}, {from, _}, {relations, clients} = state) do
+    case get_username(from, state) do
+      nil ->
+        case User.exists?(user) do
+          true ->
+            updated_relations = Map.put(relations, user, %{node: node(from)})
+            updated_clients = Map.put(clients, node(from), {user, true})
+            Process.monitor({:quiz_client, node(from)})
+            {:reply, :registered, {updated_relations, updated_clients}}
+
+          false ->
+            Logger.error(
+              "Client is trying to login in with user #{user} but no such user exists."
+            )
+
+            {:reply, :no_such_user, state}
+        end
+
+      _ ->
+        Logger.error("Client is trying to login in with user #{user} but is already loged in.")
+        {:reply, :already_logged_in, state}
     end
   end
 
@@ -90,6 +127,7 @@ defmodule Server.Worker do
         {:reply, :not_registered, state}
 
       user ->
+        # maybe delete everything about this user - or better, map the user as inactive!
         new_relations =
           remove_user(
             Map.delete(relations, user),
@@ -113,6 +151,7 @@ defmodule Server.Worker do
         {:reply, :not_registered, state}
 
       of ->
+        # get all states/signle game state and format the scores
         {:reply,
          relations
          |> Map.get(of, %{})
@@ -146,6 +185,7 @@ defmodule Server.Worker do
    Returns list of all registered clients (connected or dissconnected).
   """
   def handle_call(:list_registered, _, {relations, clients}) do
+    # get all users from users table
     {:reply,
      relations
      |> Enum.map(fn {name, _} -> name end), {relations, clients}}
@@ -161,24 +201,32 @@ defmodule Server.Worker do
      {relations, clients}}
   end
 
+  def handle_call(:dump, {_from, _}, {relations, clients} = state) do
+    IO.inspect(state)
+
+    {:reply, "", {relations, clients}}
+  end
+
   @doc """
   A client `from` is sending an invitation to `to`. If `to` had sent an invitation to `from`, the game
   is assuming that `to` wants to play and an invitation wont be send, instead they will start playing.
   In case `from` or `to` isn't registered or they're already playing nothing is done.
   """
   def handle_cast({:invitation, from, to}, {relations, clients} = state) do
-    case(Map.get(relations, from) == nil || Map.get(relations, to) == nil) do
+    case not User.exists?(from) or not User.exists?(to) do
       true ->
         {:noreply, state}
 
       false ->
-        case Map.get(relations, from) |> Map.get(to) do
-          nil ->
-            case Map.get(relations, to) |> Map.get(from) do
-              nil ->
+        case Invitation.exists?(from, to) or playing?(from, to) do
+          false ->
+            case Invitation.exists?(to, from) do
+              false ->
                 %{node: to_node} = Map.get(relations, to)
                 GenServer.cast({:quiz_client, to_node}, {:add_invitation, from})
                 Logger.info("Client #{from} invited client #{to}")
+
+                Invitation.insert(from, to)
 
                 {:noreply,
                  {%{relations | from => Map.put(Map.get(relations, from), to, {{0, 0}, true})},
@@ -207,7 +255,7 @@ defmodule Server.Worker do
   In case `from` or `to` isn't registered or they're already playing nothing is done.
   """
   def handle_cast({:accept, from, to}, {relations, clients} = state) do
-    case(Map.get(relations, from) == nil || Map.get(relations, to) == nil) do
+    case not User.exists?(from) and not User.exists?(to) do
       true ->
         Logger.info(
           "Client #{from} failed to accept client #{to}'s invitation: someone of them is not registered"
@@ -227,9 +275,13 @@ defmodule Server.Worker do
                 {:noreply, state}
 
               _game_state ->
+                # remove the from->to pair from invitations
+                # put a new pair in games and game_state
                 new_from_map = Map.put(Map.get(relations, from), to, {{0, 0}, true})
                 %{node: from_node} = Map.get(relations, from)
                 GenServer.cast({:quiz_client, from_node}, {:add_question, fetch_question(), to})
+
+                Invitation.delete(to, from)
                 Logger.info("Client #{from} accepted client #{to}'s invitation")
                 {:noreply, {Map.put(relations, from, new_from_map), clients}}
             end
@@ -250,7 +302,7 @@ defmodule Server.Worker do
   In case `from` or `to` isn't registered or they're already playing nothing is done.
   """
   def handle_cast({:decline, from, to}, {relations, clients} = state) do
-    case(Map.get(relations, from) == nil || Map.get(relations, to) == nil) do
+    case not User.exists?(from) and not User.exists?(to) do
       true ->
         Logger.info(
           "Client #{from} failed to decline client #{to}'s invitation: someone of them is not registered"
@@ -270,6 +322,8 @@ defmodule Server.Worker do
                 {:noreply, state}
 
               _game_state ->
+                Invitation.delete(to, from)
+                # remove the from->to pair from invitations
                 Logger.info("Client #{from} declined client #{to}'s invitation")
 
                 {:noreply,
@@ -299,6 +353,8 @@ defmodule Server.Worker do
         {:noreply, state}
 
       true ->
+        # add question entry
+        # change the game_state entry - add the q
         %{node: from_node} = Map.get(relations, from)
         %{node: to_node} = Map.get(relations, to)
         GenServer.cast({:quiz_client, to_node}, {:add_result, from, q, answer, guess})
@@ -322,6 +378,9 @@ defmodule Server.Worker do
         {:noreply, state}
 
       true ->
+        # add question entry
+        # change the game_state entry - add the q
+
         # %{node: from_node} = Map.get(relations, from)
         %{node: to_node} = Map.get(relations, to)
         GenServer.cast({:quiz_client, to_node}, {:add_result, from, q, answer, guess})
@@ -355,6 +414,8 @@ defmodule Server.Worker do
         {:noreply, state}
 
       true ->
+        # add new question
+        # change the game_state entry by adding an answer to the question and
         %{node: to_node} = Map.get(relations, to)
         GenServer.cast({:quiz_client, to_node}, {:add_guess, from, q, answer})
 
@@ -369,6 +430,8 @@ defmodule Server.Worker do
         {:noreply, {update_related(relations, from, to), clients}}
     end
   end
+
+  def questions_count(), do: @questions_count
 
   # PRIVATE#
 
@@ -473,5 +536,12 @@ defmodule Server.Worker do
             GenServer.cast({:quiz_client, user_node}, {:add_question, fetch_question(), other})
         end
     end
+  end
+
+  defp reorder(user1, user2) when user1 > user2, do: {user2, user1}
+  defp reorder(user1, user2), do: {user1, user2}
+
+  defp playing?(user1, user2) do
+    false
   end
 end
