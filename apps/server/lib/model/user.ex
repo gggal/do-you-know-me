@@ -1,28 +1,33 @@
-defmodule UserBehaviour do
+defmodule User do
   @callback exists?(String.t()) :: boolean()
   @callback insert(String.t(), String.t()) :: boolean()
+  @callback get_password(String.t()) :: :err | {:ok, String.t()}
+  @callback delete(String.t()) :: boolean()
+  @callback all() :: [String.t()]
 end
 
 defmodule Server.User do
-  @behaviour UserBehaviour
+  @behaviour User
   @moduledoc """
   This module maps to the Users table. It contains all users and their details.
   """
 
+  alias Server.Game
+  alias Server.Question
+  alias Server.Score
+  alias Server.Invitation
+
   use Ecto.Schema
   import Ecto.Changeset
   require Logger
+  require Ecto.Query
 
   @primary_key {:username, :string, []}
   schema "users" do
     field(:password, :string)
   end
 
-  @spec changeset(
-          {map, map} | %{:__struct__ => atom | %{__changeset__: map}, optional(atom) => any},
-          :invalid | %{optional(:__struct__) => none, optional(atom | binary) => any}
-        ) :: Ecto.Changeset.t()
-  def changeset(user, params \\ %{}) do
+  def changeset(user, params) do
     user
     |> cast(params, [:username, :password])
     |> validate_required([:username, :password])
@@ -38,9 +43,63 @@ defmodule Server.User do
     end
   end
 
-  def insert(name, password \\ "default_password") do
+  def insert(name, password) do
     changeset(%Server.User{}, %{username: name, password: password})
     |> DB.Repo.insert()
     |> Server.Util.changeset_to_bool()
+  end
+
+  def get_password(name) do
+    case Server.User |> DB.Repo.get(name) do
+      nil -> :err
+      %{password: password} -> {:ok, password}
+    end
+  end
+
+  def all do
+    Server.User |> DB.Repo.all() |> Enum.map(fn %{username: name} -> name end)
+  end
+
+  def delete(name) do
+    if exists?(name) do
+      case DB.Repo.transaction(fn -> delete_all_user_data(name) end) do
+        {:ok, _} ->
+          true
+
+        {:err, reason} ->
+          Logger.error("Failed to delete user, reason: #{reason}")
+          false
+      end
+    else
+      false
+    end
+  end
+
+  defp delete_all_user_data(name) do
+    questions_to_del = users_questions(name)
+    scores_to_del = users_scores(name)
+    DB.Repo.delete_all(Ecto.Query.from(g in Game, where: g.user1 == ^name or g.user2 == ^name))
+    DB.Repo.delete_all(Ecto.Query.from(i in Invitation, where: i.from == ^name or i.to == ^name))
+    DB.Repo.delete_all(Ecto.Query.from(q in Question, where: q.id in ^questions_to_del))
+    DB.Repo.delete_all(Ecto.Query.from(s in Score, where: s.id in ^scores_to_del))
+    DB.Repo.delete_all(Ecto.Query.from(u in Server.User, where: u.username == ^name))
+  end
+
+  defp users_questions(name) do
+    Ecto.Query.from(g in Game,
+      where: g.user1 == ^name or g.user2 == ^name,
+      select: [g.question1, g.question2]
+    )
+    |> DB.Repo.all()
+    |> List.flatten()
+  end
+
+  defp users_scores(name) do
+    Ecto.Query.from(g in Game,
+      where: g.user1 == ^name or g.user2 == ^name,
+      select: [g.score1, g.score2]
+    )
+    |> DB.Repo.all()
+    |> List.flatten()
   end
 end

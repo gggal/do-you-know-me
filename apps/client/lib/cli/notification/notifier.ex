@@ -21,10 +21,10 @@ defmodule Notifier do
   @doc """
   """
   def handle_call(:notify_invitations, _from, %{invitations: players} = state) do
-
     current = current_invitations()
 
-    {:reply, MapSet.difference(current, players), %{state | invitations: MapSet.union(current, players)}}
+    {:reply, MapSet.difference(current, players),
+     %{state | invitations: MapSet.union(current, players)}}
   end
 
   def handle_call(:notify_best, _from, state) do

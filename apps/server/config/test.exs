@@ -1,3 +1,7 @@
-use Mix.Config
+import Config
 
-config :clustered_nodes, nodes: [:"node1@127.0.0.1", :"node2@127.0.0.1", :"node3@127.0.0.1"]
+config :server, user: UserMock
+config :server, game: GameMock
+config :server, invitation: InvitationMock
+config :server, question: QuestionMock
+config :server, score: ScoreMock

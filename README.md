@@ -10,4 +10,6 @@ TODO list:
 4.Test distributively  
 5.Phoenix - GUI  
 
+examples in docs!
+
 

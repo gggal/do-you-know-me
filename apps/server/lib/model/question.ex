@@ -1,6 +1,18 @@
+defmodule Question do
+  @callback get_question_number(integer()) :: :err | {:ok, integer()}
+  @callback get_question_answer(integer()) :: :err | {:ok, atom()}
+  @callback get_question_guess(integer()) :: :err | {:ok, atom()}
+  @callback set_question_number(integer(), integer()) :: boolean()
+  @callback set_question_answer(integer(), String.t()) :: boolean()
+  @callback set_question_guess(integer(), String.t()) :: boolean()
+end
+
 defmodule Server.Question do
+  @behaviour Question
+
   use Ecto.Schema
   import Ecto.Changeset
+  require Logger
 
   schema "questions" do
     field(:question_num, :integer)
@@ -8,7 +20,7 @@ defmodule Server.Question do
     field(:guess, :string)
   end
 
-  def changeset(question, params \\ %{}) do
+  def changeset(question, params) do
     question
     |> cast(params, [:id, :question_num, :answer, :guess], empty_values: [nil])
     |> validate_required([])

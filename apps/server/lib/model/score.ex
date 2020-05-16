@@ -1,4 +1,13 @@
+defmodule Score do
+  @callback get_hits(integer()) :: {:ok, integer()} | :err
+  @callback get_misses(integer()) :: {:ok, integer()} | :err
+  @callback set_hits(integer(), integer()) :: boolean()
+  @callback set_misses(integer(), integer()) :: boolean()
+end
+
 defmodule Server.Score do
+  @behaviour Score
+
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -7,7 +16,7 @@ defmodule Server.Score do
     field(:misses, :integer)
   end
 
-  def changeset(score, params \\ %{}) do
+  def changeset(score, params) do
     score
     |> cast(params, [:id, :hits, :misses])
     |> validate_required([:id, :hits, :misses])

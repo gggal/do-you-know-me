@@ -44,6 +44,33 @@ defmodule Server.InvitationTest do
     assert true == Invitation.exists?(@username1, @username2)
   end
 
+  test "get all for user but 'for' is nil" do
+    assert :err = Invitation.get_all_for(nil)
+  end
+
+  test "get all when no such user" do
+    assert {:ok, []} = Invitation.get_all_for(TestUtil.random_username())
+  end
+
+  test "get all for user but there's no invitation associated" do
+    assert {:ok, []} = Invitation.get_all_for(@username1)
+  end
+
+  test "get all for user when there's a single invitation" do
+    assert {:ok, [@username1]} = Invitation.get_all_for(@username2)
+  end
+
+  test "get all for user when there's multiple invitations" do
+    new_user = TestUtil.random_username()
+    assert %User{username: new_user, password: ""} |> DB.Repo.insert() |> elem(0) == :ok
+    assert %Invitation{from: new_user, to: @username2} |> DB.Repo.insert() |> elem(0) == :ok
+
+    on_exit(fn ->
+      %Invitation{from: new_user, to: @username2} |> DB.Repo.delete()
+      %Server.User{username: new_user} |> DB.Repo.delete()
+    end)
+  end
+
   test "add invitation from 'nil' user" do
     assert false == Invitation.insert(nil, @username2)
   end
@@ -66,7 +93,6 @@ defmodule Server.InvitationTest do
 
   test "add new invitation" do
     assert true == Invitation.insert(@username2, @username1)
-    nil
     on_exit(fn -> %Invitation{from: @username2, to: @username1} |> DB.Repo.delete() end)
   end
 

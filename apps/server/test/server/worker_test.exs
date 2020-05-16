@@ -1,5 +1,9 @@
 defmodule Server.WorkerTest do
   use ExUnit.Case
+  # doctest First
+  import Mox
+  setup :verify_on_exit!
+  setup :set_mox_global
 
   require Logger
 
@@ -7,280 +11,576 @@ defmodule Server.WorkerTest do
   def node2(), do: :"node2@127.0.0.1"
   def node3(), do: :"node3@127.0.0.1"
 
-  setup_all do
-    {:ok, _} = Server.Worker.start_link()
-    {:ok, _} = :rpc.call(node1(), Server.TestClient, :start_link, [])
-    {:ok, _} = :rpc.call(node2(), Server.TestClient, :start_link, [])
-    {:ok, _} = :rpc.call(node3(), Server.TestClient, :start_link, [])
-    :ok
-  end
-
-  # Client1 has sent invitation to client2 and client3.
   setup do
-    state()
-    :rpc.call(node1(), GenServer, :call, [:quiz_client, :unregister])
-    :rpc.call(node2(), GenServer, :call, [:quiz_client, :unregister])
-    :rpc.call(node3(), GenServer, :call, [:quiz_client, :unregister])
-    :rpc.call(node1(), GenServer, :call, [:quiz_client, {:register, "username1"}])
-    :rpc.call(node2(), GenServer, :call, [:quiz_client, {:register, "username2"}])
-    :rpc.call(node3(), GenServer, :call, [:quiz_client, {:register, "username3"}])
+    :sys.replace_state(server_pid(), fn _state ->
+      %{"node2@127.0.0.1": "username2", "node3@127.0.0.1": "username3"}
+    end)
 
-    :rpc.block_call(node3(), GenServer, :cast, [:quiz_client, {:invite, "username2"}])
-    :rpc.block_call(node2(), GenServer, :cast, [:quiz_client, {:invite, "username3"}])
-    :rpc.block_call(node1(), GenServer, :cast, [:quiz_client, {:invite, "username2"}])
-    state()
+    on_exit(&teardown/0)
   end
 
-  # @tag :skip
+  defp teardown do
+    :sys.replace_state(server_pid(), fn _state -> %{} end)
+  end
+
+  test "unsuccessful registration with empty username" do
+    stub_register_user()
+
+    assert :invalid_username == remote_call(node1(), {:register, "", "pass"})
+  end
+
+  test "unsuccessful registration with empty password" do
+    stub_register_user()
+
+    assert :invalid_password == remote_call(node1(), {:register, "username1", ""})
+  end
+
+  test "unsuccessful registration with ill-formatted username" do
+    stub_register_user()
+
+    assert :invalid_username == remote_call(node1(), {:register, "&@#", "password"})
+  end
+
+  test "unsuccessful registration for already registered client" do
+    stub_register_user()
+
+    assert :already_registered == remote_call(node2(), {:register, "username4", "password"})
+  end
+
+  test "unsuccessful registration for a client with already taken name" do
+    stub_register_user()
+    UserMock |> expect(:exists?, fn _name -> true end)
+
+    assert :taken == remote_call(node1(), {:register, "username2", "password"})
+  end
+
+  test "unsuccessful registration due to failed insert query" do
+    stub_register_user()
+    expect(UserMock, :insert, fn _name, _ -> false end)
+
+    assert :db_error == remote_call(node1(), {:register, "username1", "password"})
+  end
+
   test "successfully registering a client" do
-    # Logger.info state()
-    # :unregistered = :rpc.call(node1(), GenServer, :call, [:quiz_client, :unregister])
-    :unregistered == remote_call(node1(), :unregister)
+    stub_register_user()
 
-    # assert :registered == :rpc.call(node1(), GenServer, :call, [:quiz_client, {:register, "username1"}])
-    assert :registered == remote_call(node1(), {:register, "username1"})
+    assert :ok == remote_call(node1(), {:register, "username1", "password"})
   end
 
-  # @tag :skip
-  test "failing to register already registered client" do
-    # assert :already_registered == :rpc.call(node1(), GenServer, :call, [:quiz_client, {:register, "username1"}])
-    assert :already_registered == remote_call(node1(), {:register, "username1"})
+  test "add user to online users list when registering" do
+    assert "username2" == :sys.get_state(server_pid()) |> Map.get(node2())
   end
 
-  # @tag :skip
-  test "failing to register a client with already taken name" do
-    # :rpc.call(node1(), GenServer, :call, [:quiz_client, :unregister])
-    remote_call(node1(), :unregister)
-
-    # assert :taken == :rpc.call(node1(), GenServer, :call, [:quiz_client, {:register, "username2"}])
-    assert :taken == remote_call(node1(), {:register, "username2"})
+  test "failing to unregister a non-registered client" do
+    assert :not_registered == remote_call(node1(), {:unregister, "password"})
   end
 
-  # @tag :skip
+  test "failing to unregister unauthenticated client" do
+    stub_unregister_user()
+
+    assert :unauthenticated == remote_call(node2(), {:unregister, "wrong_password"})
+  end
+
+  test "failing to unregister client when db fail occurs" do
+    stub_unregister_user()
+
+    UserMock |> expect(:delete, fn _name -> false end)
+    assert :db_error == remote_call(node2(), {:unregister, "password"})
+  end
+
+  test "remove user from online users list when unregistering" do
+    stub_unregister_user()
+
+    assert :ok == remote_call(node2(), {:unregister, "password"})
+  end
+
   test "successfully unregistering a client" do
-    # assert :unregistered == :rpc.call(node1(), GenServer, :call, [:quiz_client, :unregister])
-    assert :unregistered == remote_call(node1(), :unregister)
+    stub_unregister_user()
+
+    assert :ok == remote_call(node2(), {:unregister, "password"})
+  end
+
+  test "unsuccessful login for already logged in client" do
+    stub_login()
+
+    assert :already_logged_in == remote_call(node2(), {:login, "username2", "password"})
+  end
+
+  test "unsuccessful login for unregistered user" do
+    stub_login()
+    UserMock |> expect(:exists?, fn _name -> false end)
+
+    assert :wrong_credentials == remote_call(node1(), {:login, "username1", "password"})
+  end
+
+  test "unsuccessful login because of wrong password" do
+    stub_login()
+
+    assert :wrong_credentials == remote_call(node1(), {:login, "username1", "wrong_password"})
+  end
+
+  test "unsuccessful login because of empty string password" do
+    stub_login()
+
+    assert :wrong_credentials == remote_call(node1(), {:login, "username1", ""})
+  end
+
+  test "unsuccessful login because of nil password" do
+    stub_login()
+
+    assert :wrong_credentials == remote_call(node1(), {:login, "username1", nil})
+  end
+
+  test "successful login" do
+    stub_login()
+
+    assert :ok == remote_call(node1(), {:login, "username1", "password"})
+  end
+
+  test "successful login of a user from second client" do
+    stub_login()
+
+    assert :ok == remote_call(node1(), {:login, "username2", "password"})
+  end
+
+  test "add user to online users list when logging in" do
+    stub_login()
+
+    assert :ok = remote_call(node1(), {:login, "username1", "password"})
+    assert "username1" == :sys.get_state(server_pid()) |> Map.get(node1())
   end
 
   # @tag :skip
-  test "failing to unregister an unregistered client" do
-    # :rpc.call(node1(), GenServer, :call, [:quiz_client, :unregister])
-    remote_call(node1(), :unregister)
-    assert :not_registered == :rpc.call(node1(), GenServer, :call, [:quiz_client, :unregister])
-  end
+  # test "remove user from online users list when client is disconnecting" do
+  #   remote_call(node1(), {:register, "username1", "password"})
 
-  @tag :skip
-  test "disconnecting of a client" do
-    GenServer.call({:global, :quiz_server}, {:register, "username1"})
-    # send {:global, :quiz_server} {:DOWN,_ref, :"client1@??", _pid, _reason}
-    clients = GenServer.call({:global, :quiz_server}, :list_registered)
-    assert false == Enum.member?(clients, "username1")
-  end
-
-  @tag :skip
-  test "reconnecting of a client" do
-    GenServer.call({:global, :quiz_server}, {:register, "username1"})
-    # GenServer.info(..)
-    clients = GenServer.call({:global, :quiz_server}, {:list_registered})
-    # GenServer.info(..)
-    assert Map.contains_key?(clients, "username1")
-  end
-
+  #   assert "username1" == :sys.get_state(@server_pid) |> Map.get(node1)
+  #   send {:global, :quiz_server}, {:DOWN, _ref, node1(), _pid, _reason}
+  #   assert nil == :sys.get_state(@server_pid) |> Map.get(node1)
+  # end
   # @tag :skip
-  test "returning list of registered clients" do
-    # list = :rpc.call(node1(), GenServer, :call, [:quiz_client, :list_registered])
-    list = remote_call(node1(), :list_registered)
-    assert [] == ["username1", "username2", "username3"] -- list
+  # test "disconnection of unknown client gets ignored" do
+  #   state = :sys.get_state(@server_pid)
+  #   send {:global, :quiz_server}, {:DOWN, _ref, node1(), _pid, _reason}
+  #   assert state == :sys.get_state(@server_pid)
+  # end
+
+  test "try listing users from not logged in client" do
+    assert :unauthenticated == remote_call(node1(), :list_users)
   end
 
-  test "returning empty list of related players before the game has started" do
-    assert [] = remote_call(node1(), :list_related)
+  test "list users successfully" do
+    to_return = ["user1", "user2", "user3"]
+    UserMock |> expect(:all, fn -> to_return end)
+    assert {:ok, to_return} == remote_call(node2(), :list_users)
   end
 
-  test "returning non-empty list of related players after the game has started" do
-    remote_cast(node2(), {:accept, "username1"})
-    assert ["username1"] == remote_call(node2(), :list_related)
+  test "try listing related users from not logged in client" do
+    assert :unauthenticated == remote_call(node1(), :list_related)
   end
 
-  # @tag :skip
-  test "newly registered client hasn't played with anyone yet" do
-    # assert [] == :rpc.call(node1(), GenServer, :call, [:quiz_client, :get_rating])
-    assert [] == remote_call(node1(), :get_rating)
+  test "list related users successfully" do
+    to_return = ["user1", "user2", "user3"]
+    GameMock |> expect(:all_related, fn _ -> to_return end)
+    assert {:ok, to_return} == remote_call(node2(), :list_related)
   end
 
-  # @tag :skip
-  test "returning rate after playing with another client" do
-    # :rpc.call(node2(), GenServer, :cast, [:quiz_client, {:answer, "username3", :a}])
-    remote_cast(node2(), {:answer, "username3", :a})
-    # :rpc.call(node3(), GenServer, :call, [:quiz_client, {:guess, :right, "username2", :a}])
-    remote_call(node3(), {:guess, :right, "username2", :a})
+  test "try sending invitation from not logged in client" do
+    assert :unauthenticated == remote_call(node1(), {:invite, "username"})
+  end
 
-    assert [{"username2", 100.0, 100.0}] ==
-             :rpc.call(node3(), GenServer, :call, [:quiz_client, :get_rating])
+  test "try inviting non-existent user" do
+    stub_invite_user()
+    UserMock |> expect(:exists?, fn _name -> false end)
+
+    assert :no_such_user == remote_call(node2(), {:invite, "invalid_username"})
+  end
+
+  test "inviting user for the second time should be ignored" do
+    stub_invite_user()
+
+    assert :ok == remote_call(node3(), {:invite, "username2"})
+    assert :ok == remote_call(node3(), {:invite, "username2"})
+  end
+
+  test "user tries to invite themselves" do
+    stub_invite_user()
+
+    assert :ok == remote_call(node2(), {:invite, "username2"})
+  end
+
+  test "user invites someone who they're playing with" do
+    stub_invite_user()
+    GameMock |> expect(:exists?, fn _, _ -> true end)
+
+    assert :ok == remote_call(node2(), {:invite, "username3"})
+  end
+
+  test "users invite each other but starting game fails" do
+    stub_invite_user()
+    InvitationMock |> expect(:exists?, 2, fn from, _sto -> from == "username2" end)
+    GameMock |> expect(:start, fn _, _ -> false end)
+
+    assert :db_error == remote_call(node3(), {:invite, "username2"})
+  end
+
+  test "users invite each other successfully" do
+    stub_invite_user()
+    InvitationMock |> expect(:exists?, 2, fn from, _to -> from == "username2" end)
+    GameMock |> expect(:start, fn _, _ -> true end)
+
+    assert :ok == remote_call(node3(), {:invite, "username2"})
+  end
+
+  test "user tries to send invitation but insert query fails" do
+    stub_invite_user()
+    InvitationMock |> expect(:insert, fn _, _ -> false end)
+
+    assert :db_error == remote_call(node3(), {:invite, "username2"})
+  end
+
+  test "user sends invitation successfully" do
+    stub_invite_user()
+
+    assert :ok == remote_call(node3(), {:invite, "username2"})
+  end
+
+  test "try accepting invitation from not logged in client" do
+    assert :unauthenticated == remote_call(node1(), {:accept, "username1"})
+  end
+
+  test "try accepting invitation from a non-existent user" do
+    stub_accept_invitation()
+    UserMock |> expect(:exists?, fn _name -> false end)
+
+    assert :no_such_user == remote_call(node2(), {:accept, "username1"})
+  end
+
+  test "try accepting non-existent invitation" do
+    stub_accept_invitation()
+    InvitationMock |> expect(:exists?, fn _, _ -> false end)
+
+    assert :no_such_invitation == remote_call(node3(), {:accept, "username2"})
+  end
+
+  test "try accepting invitation but the query fails" do
+    stub_accept_invitation()
+    GameMock |> expect(:start, fn _, _ -> false end)
+
+    assert :db_error == remote_call(node3(), {:accept, "username2"})
+  end
+
+  test "accept invitation successfully" do
+    stub_accept_invitation()
+
+    assert :ok == remote_call(node3(), {:accept, "username2"})
+  end
+
+  test "try declining invitation from not logged in client" do
+    assert :unauthenticated == remote_call(node1(), {:decline, "username1"})
+  end
+
+  test "try declining invitation from a non-existent user" do
+    stub_decline_invitation()
+    UserMock |> expect(:exists?, fn _name -> false end)
+
+    assert :no_such_user == remote_call(node3(), {:decline, "username2"})
+  end
+
+  test "try declining non-existent invitation" do
+    stub_decline_invitation()
+    InvitationMock |> expect(:exists?, fn _, _ -> false end)
+
+    assert :no_such_invitation == remote_call(node3(), {:decline, "username2"})
+  end
+
+  test "try declining invitation but the query fails" do
+    stub_decline_invitation()
+    InvitationMock |> expect(:delete, fn _, _ -> false end)
+
+    assert :db_error == remote_call(node3(), {:decline, "username2"})
+  end
+
+  test "decline invitation successfully" do
+    stub_decline_invitation()
+
+    assert :ok == remote_call(node3(), {:decline, "username2"})
+  end
+
+  test "try answering a question but the client is not not logged in" do
+    assert :unauthenticated = remote_call(node1(), {:answer_question, "username2", "a"})
+  end
+
+  test "try answering a question from non-existent user" do
+    stub_answer()
+    UserMock |> expect(:exists?, fn _ -> false end)
+
+    assert :no_such_user = remote_call(node3(), {:answer_question, "username1", "a"})
+  end
+
+  test "try answering a question but there's no game record" do
+    stub_answer()
+    GameMock |> expect(:exists?, fn _, _ -> false end)
+
+    assert :no_such_game = remote_call(node3(), {:answer_question, "username2", "a"})
+  end
+
+  test "try answering a question but the answer is not a/b/c" do
+    stub_answer()
+
+    assert :invalid_response = remote_call(node3(), {:answer_question, "username2", "d"})
+  end
+
+  test "try answering a question but the answer is nil" do
+    stub_answer()
+
+    assert :invalid_response = remote_call(node3(), {:answer_question, "username2", nil})
+  end
+
+  test "try answering a question but there's no question in the db" do
+    stub_answer()
+    QuestionMock |> expect(:get_question_number, fn _ -> false end)
+
+    assert :db_error = remote_call(node3(), {:answer_question, "username2", "a"})
+  end
+
+  test "try answering a question but the insert query fails" do
+    stub_answer()
+    GameMock |> expect(:answer_question, fn _, _, _ -> false end)
+
+    assert :db_error = remote_call(node3(), {:answer_question, "username2", "a"})
+  end
+
+  # test "a 'guess' message is being sent to the other user upon answering" do
+  # end
+
+  # test "an 'answer' message is being sent to the user upon answering" do
+  # end
+
+  test "answer a question when other user is not online" do
+    stub_answer()
+
+    assert :ok = remote_call(node3(), {:answer_question, "username1", "a"})
+  end
+
+  test "answer a question successfully" do
+    stub_answer()
+
+    assert :ok = remote_call(node3(), {:answer_question, "username2", "a"})
+  end
+
+  test "try guess a question but the client is not not logged in" do
+    assert :unauthenticated = remote_call(node1(), {:guess_question, "username2", "a"})
+  end
+
+  test "try guessing a question but the user doesn't exist" do
+    stub_guess()
+    UserMock |> expect(:exists?, fn _ -> false end)
+
+    assert :no_such_user = remote_call(node2(), {:guess_question, "username1", "a"})
+  end
+
+  test "try guessing a question but the guess is not valid" do
+    stub_guess()
+
+    assert :invalid_response = remote_call(node2(), {:guess_question, "username1", "d"})
+  end
+
+  test "try guessing a question but the guess is nil" do
+    stub_guess()
+
+    assert :invalid_response = remote_call(node2(), {:guess_question, "username1", nil})
+  end
+
+  test "try guessing a question but there's no such game" do
+    stub_guess()
+    GameMock |> expect(:exists?, fn _, _ -> false end)
+
+    assert :no_such_game = remote_call(node2(), {:guess_question, "username1", "a"})
   end
 
   @tag :skip
-  test "returning rate after the player was disconnected" do
-    GenServer.call({:global, :quiz_server}, {:unregister, "client1"})
-    GenServer.call({:global, :quiz_server}, {:register, "client1"})
-    # GenServer.info(..)
-    assert GenServer.call({:global, :quiz_server}, {:rate, "client1"}) == 0
+  test "try guessing a question but question is nil (invalid db state)" do
+    stub_guess()
+    GameMock |> expect(:get_question, fn _, _ -> {:ok, nil} end)
+
+    assert :db_error = remote_call(node2(), {:guess_question, "username1", "a"})
   end
 
-  # @tag :skip
-  test "unregistered client is trying to send an invitation" do
-    # :rpc.call(node1(), GenServer, :call, [:quiz_client, :unregister])
-    remote_call(node1(), :unregister)
-    state1 = state()
-    # :rpc.call(node1(), GenServer, :cast, [:quiz_client, {:invite, "username2"}])
-    remote_cast(node1(), {:invite, "username2"})
-    assert state1 == state()
+  test "try guessing a question but db query fails" do
+    stub_guess()
+    GameMock |> expect(:guess_question, fn _, _, _ -> false end)
+
+    assert :db_error = remote_call(node2(), {:guess_question, "username1", "a"})
   end
 
-  # @tag :skip
-  test "client is sending an invitation to an unregistered client" do
-    # :rpc.call(node1(), GenServer, :cast, [:quiz_client, {:invite, "username4"}])
-    remote_cast(node1(), {:invite, "username4"})
-    assert Map.get(state(), "username1") |> Map.get("username4") == nil
+  # test "send the other client a 'show' message" do
+  # end
+
+  test "guess a question when other user is not online" do
+    stub_guess()
+
+    assert :ok = remote_call(node3(), {:guess_question, "username1", "a"})
   end
 
-  @tag :skip
-  test "client2 is sending an invitation to client3 who has already sent invitation to client2" do
-    client2_map = Map.get(state(), "username2", %{})
-    client3_map = Map.get(state(), "username3", %{})
-    assert Map.has_key?(client2_map, "username3") && Map.has_key?(client3_map, "username2")
+  test "guess a question successfully" do
+    stub_guess()
+
+    assert :ok = remote_call(node3(), {:guess_question, "username2", "a"})
   end
 
-  @tag :skip
-  test "client is successfully sending an invitation" do
-    assert true == state() |> Map.get("username1", %{}) |> Map.has_key?("username2")
+  test "try getting score but the client is not logged in" do
+    assert :unauthenticated = remote_call(node1(), {:get_score, "username2"})
   end
 
-  # @tag :skip
-  test "client is trying to accept an invitation from unregistered client" do
-    # :rpc.call(node1(), GenServer, :cast, [:quiz_client, {:accept, "username4"}])
-    remote_cast(node1(), {:accept, "username4"})
-    assert false == Map.get(state(), "username1", %{}) |> Map.has_key?("username4")
+  test "try getting score but there's no such user" do
+    UserMock |> expect(:exists?, fn _ -> false end)
+
+    assert :no_such_user = remote_call(node2(), {:get_score, "username1"})
   end
 
-  @tag :skip
-  test "client is trying to accept an invitation from disconnected client" do
-    GenServer.call({:global, :quiz_server}, {:register, "client1"})
-    GenServer.call({:global, :quiz_server}, {:register, "client2"})
-    GenServer.cast({:global, :quiz_server}, {:invite, "client2", "client1"})
-    # GenSever.info(..)
-    GenServer.cast({:global, :quiz_server}, {:accept, "client1", "client2"})
-    assert %{} = :sys.get_state(:quiz_server)
+  test "try getting score but there's no such game" do
+    stub_get_score()
+    GameMock |> expect(:exists?, fn _, _ -> false end)
+
+    assert :no_such_game = remote_call(node2(), {:get_score, "username1"})
   end
 
-  # @tag :skip
-  test "client is trying to accept an invitation from someone who never sent one" do
-    # :rpc.call(node1(), GenServer, :cast, [:quiz_client, {:accept, "username3"}])
-    remote_cast(node1(), {:accept, "username3"})
-    assert false == Map.get(state(), "username1", %{}) |> Map.has_key?("username3")
+  test "try getting score but get score query fails" do
+    stub_get_score()
+    GameMock |> expect(:get_score, fn _, _ -> :err end)
+
+    assert :db_error = remote_call(node2(), {:get_score, "username1"})
   end
 
-  @tag :skip
-  test "client is accepting an invitation" do
-    # :rpc.call(node2(), GenServer, :cast, [:quiz_client, {:accept, "username1"}])
-    remote_cast(node2(), {:accept, "username1"})
-    client1_map = Map.get(state(), "username1", %{})
-    client2_map = Map.get(state(), "username2", %{})
-    assert Map.has_key?(client2_map, "username1") && Map.has_key?(client1_map, "username2")
+  test "try getting score but get s1 hits query fails" do
+    stub_get_score()
+    ScoreMock |> expect(:get_hits, fn _ -> :err end)
+
+    assert :db_error = remote_call(node2(), {:get_score, "username1"})
   end
 
-  # @tag :skip
-  test "client is trying to decline an invitation from unregistered client" do
-    # :rpc.call(node1(), GenServer, :cast, [:quiz_client, {:decline, "username4"}])
-    remote_cast(node1(), {:decline, "username4"})
-    assert false == Map.get(state(), "username1", %{}) |> Map.has_key?("username4")
+  test "try getting score but get s2 hits query fails" do
+    stub_get_score()
+    ScoreMock |> expect(:get_hits, fn _ -> {:ok, 0} end)
+    ScoreMock |> expect(:get_hits, fn _ -> :err end)
+
+    assert :db_error = remote_call(node2(), {:get_score, "username1"})
   end
 
-  @tag :skip
-  test "client is trying to decline an invitation from disconnected client" do
-    GenServer.call({:global, :quiz_server}, {:register, "client1"})
-    GenServer.call({:global, :quiz_server}, {:register, "client2"})
-    GenServer.cast({:global, :quiz_server}, {:invite, "client2", "client1"})
-    # GenSever.info(..)
-    GenServer.cast({:global, :quiz_server}, {:accept, "client1", "client2"})
-    assert %{} = :sys.get_state(:quiz_server)
+  test "try getting score but get s1 misses query fails" do
+    stub_get_score()
+    ScoreMock |> expect(:get_misses, fn _ -> :err end)
+
+    assert :db_error = remote_call(node2(), {:get_score, "username1"})
   end
 
-  # @tag :skip
-  test "client is trying to decline an invitation from someone who never sent one" do
-    # :rpc.call(node1(), GenServer, :cast, [:quiz_client, {:decline, "username3"}])
-    remote_cast(node1(), {:decline, "username3"})
-    assert false == Map.get(state(), "username1", %{}) |> Map.has_key?("username3")
+  test "try getting score but get s2 misses query fails" do
+    stub_get_score()
+    ScoreMock |> expect(:get_misses, fn _ -> {:ok, 0} end)
+    ScoreMock |> expect(:get_misses, fn _ -> :err end)
+
+    assert :db_error = remote_call(node2(), {:get_score, "username1"})
   end
 
-  # @tag :skip
-  test "client is declining an invitation" do
-    # :rpc.call(node2(), GenServer, :cast, [:quiz_client, {:decline, "username1"}])
-    remote_cast(node2(), {:decline, "username1"})
-    Process.sleep(1000)
-    client1_map = Map.get(state(), "username1", %{}) |> Map.has_key?("username2")
-    client2_map = Map.get(state(), "username2", %{}) |> Map.has_key?("username1")
-    assert false == client1_map && client2_map == false
+  test "getting score successfully" do
+    stub_get_score()
+
+    assert {:ok, 25.0, 25.0} = remote_call(node2(), {:get_score, "username1"})
   end
 
-  @tag :skip
-  test "client is trying to answer a question from a disconnected client" do
-    GenServer.call({:global, :quiz_server}, {:register, "client1"})
-    GenServer.call({:global, :quiz_server}, {:register, "client2"})
-    GenServer.cast({:global, :quiz_server}, {:invite, "client2", "client1"})
-    GenServer.cast({:global, :quiz_server}, {:accept, "client1", "client2"})
-    # GenSever.info(..)
-    # fixthis
-    GenServer.call({:global, :quiz_server}, {:answer, "client2", "client2"})
-    assert %{"client1" => "client2", "client2" => "client1"} = :sys.get_state(:quiz_server)
+  test "score is calculated correctly" do
+    stub_get_score()
+
+    GameMock
+    |> expect(
+      :get_score,
+      2,
+      fn _, user1 -> if user1 == "username1", do: {:ok, 1}, else: {:ok, 2} end
+    )
+
+    expect(ScoreMock, :get_hits, 2, fn id -> if id == 1, do: {:ok, 1}, else: {:ok, 2} end)
+    expect(ScoreMock, :get_misses, 2, fn id -> if id == 1, do: {:ok, 2}, else: {:ok, 1} end)
+
+    assert {:ok, 66.67, 33.33} = remote_call(node2(), {:get_score, "username1"})
   end
 
-  @tag :skip
-  test "client is trying to answer a question from an unregistered client" do
-    # :rpc.call(node1(), GenServer, :cast, [:quiz_client, {:answer, "username4", :a}])
-    remote_cast(node1(), {:answer, "username4", :a})
-    assert nil == Map.get(state(), "username1", %{}) |> Map.has_key?("username4")
-  end
+  # test "sending msg upon successful score retrieval" do
 
-  @tag :skip
-  test "client is trying to guess an answer from an unregistered client" do
-    # :rpc.call(node1(), GenServer, :cast, [:quiz_client, {:guess, "username4", :a}])
-    remote_cast(node1(), {:guess, "username4", :a})
-    assert nil == Map.get(state(), "username1", %{}) |> Map.has_key?("username4")
-  end
-
-  @tag :skip
-  test "client gives right quess to other client" do
-    # :rpc.call(node2(), GenServer, :cast, [:quiz_client, {:answer, "username3", :a}])
-    remote_cast(node2(), {:answer, "username3", :a})
-    # :rpc.call(node3(), GenServer, :call, [:quiz_client, {:guess, :right, "username2", :a}])
-    remote_call(node2(), {:guess, :right, "username2", :a})
-    assert {1, 0} == Map.get(state(), "username2") |> Map.get("username3")
-  end
-
-  # @tag :skip
-  test "client gives wrong quess to other client" do
-    # :rpc.call(node2(), GenServer, :cast, [:quiz_client, {:answer, "username3", :a}])
-    remote_cast(node2(), {:answer, "username3", :a})
-    # :rpc.call(node3(), GenServer, :call, [:quiz_client, {:guess, :wrong, "username2", :b}])
-    remote_call(node3(), {:guess, :wrong, "username2", :b})
-    assert {0, 1} == Map.get(state(), "username2") |> Map.get("username3")
-  end
+  # end2
 
   # todo reconnect tests
 
+  defp stub_register_user do
+    stub(UserMock, :exists?, fn _name -> false end)
+    stub(UserMock, :insert, fn _name, _ -> true end)
+  end
+
+  defp stub_unregister_user do
+    UserMock |> stub(:get_password, fn _name -> "password" end)
+    UserMock |> stub(:delete, fn _name -> true end)
+  end
+
+  defp stub_login do
+    UserMock |> stub(:exists?, fn _name -> true end)
+    UserMock |> stub(:get_password, fn _name -> "password" end)
+    InvitationMock |> stub(:get_all_for, fn _ -> {:ok, []} end)
+    GameMock |> stub(:all_related, fn _ -> [] end)
+  end
+
+  defp stub_answer do
+    UserMock |> stub(:exists?, fn _ -> true end)
+    GameMock |> stub(:exists?, fn _, _ -> true end)
+    GameMock |> stub(:get_question, fn _, _ -> {:ok, 1} end)
+    GameMock |> stub(:answer_question, fn _, _, _ -> true end)
+    QuestionMock |> stub(:get_question_number, fn _ -> {:ok, 0} end)
+  end
+
+  defp stub_guess do
+    UserMock |> stub(:exists?, fn _ -> true end)
+    GameMock |> stub(:exists?, fn _, _ -> true end)
+    GameMock |> stub(:get_question, fn _, _ -> {:ok, 1} end)
+    QuestionMock |> stub(:get_question_number, fn _ -> {:ok, 0} end)
+    QuestionMock |> stub(:get_question_answer, fn _ -> {:ok, "a"} end)
+    QuestionMock |> stub(:get_question_guess, fn _ -> {:ok, "a"} end)
+    GameMock |> stub(:guess_question, fn _, _, _ -> true end)
+  end
+
+  defp stub_get_score do
+    UserMock |> stub(:exists?, fn _ -> true end)
+    GameMock |> stub(:exists?, fn _, _ -> true end)
+    GameMock |> stub(:get_score, fn _, _ -> {:ok, 1} end)
+    ScoreMock |> stub(:get_hits, fn _ -> {:ok, 1} end)
+    ScoreMock |> stub(:get_misses, fn _ -> {:ok, 3} end)
+  end
+
+  defp stub_invite_user do
+    UserMock |> stub(:exists?, fn _name -> true end)
+    GameMock |> stub(:exists?, fn _, _ -> false end)
+    InvitationMock |> stub(:exists?, fn _, _ -> false end)
+    InvitationMock |> stub(:insert, fn _, _ -> true end)
+    GameMock |> stub(:get_question, fn _, _ -> {:ok, 0} end)
+    QuestionMock |> stub(:get_question_number, fn _ -> {:ok, 0} end)
+    GameMock |> stub(:start, fn _, _ -> true end)
+  end
+
+  defp stub_accept_invitation do
+    UserMock |> stub(:exists?, fn _name -> true end)
+    InvitationMock |> stub(:exists?, fn _, _ -> true end)
+    GameMock |> stub(:get_question, fn _, _ -> {:ok, 0} end)
+    QuestionMock |> stub(:get_question_number, fn _ -> {:ok, 0} end)
+    GameMock |> stub(:start, fn _, _ -> true end)
+  end
+
+  defp stub_decline_invitation do
+    UserMock |> stub(:exists?, fn _name -> true end)
+    InvitationMock |> stub(:exists?, fn _, _ -> true end)
+    InvitationMock |> stub(:delete, fn _, _ -> true end)
+  end
+
   defp remote_call(node, args) do
-    :rpc.call(node, GenServer, :call, [:quiz_client, args])
+    :rpc.call(node, GenServer, :call, [{:global, :quiz_server}, args])
   end
 
-  defp remote_cast(node, args) do
-    :rpc.call(node, GenServer, :cast, [:quiz_client, args])
-  end
-
-  defp state() do
-    :quiz_server
-    |> :global.whereis_name()
-    |> :sys.get_state()
-    |> elem(0)
-  end
+  defp server_pid, do: :global.whereis_name(:quiz_server)
 end

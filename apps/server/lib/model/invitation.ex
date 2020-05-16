@@ -1,4 +1,14 @@
+defmodule Invitation1 do
+  @callback exists?(String.t(), String.t()) :: boolean()
+  @callback insert(String.t(), String.t()) :: boolean()
+  @callback delete(String.t(), String.t()) :: boolean()
+  @callback get_all_for(String.t()) :: :err | {:ok, [Stirng.t()]}
+end
+
 defmodule Server.Invitation do
+  @behaviour Invitation1
+
+  require Ecto.Query
   use Ecto.Schema
   import Ecto.Changeset
 
@@ -8,7 +18,7 @@ defmodule Server.Invitation do
     field(:to, :string, primary_key: true)
   end
 
-  def changeset(invitation, params \\ %{}) do
+  def changeset(invitation, params) do
     invitation
     |> cast(params, [:from, :to])
     |> validate_required([:from, :to])
@@ -23,6 +33,18 @@ defmodule Server.Invitation do
       _ -> true
     end
   end
+
+  def get_all_for(for_user) when is_binary(for_user) do
+    {:ok,
+     Ecto.Query.from(
+       i in Server.Invitation,
+       where: i.to == ^for_user,
+       select: i.from
+     )
+     |> DB.Repo.all()}
+  end
+
+  def get_all_for(_), do: :err
 
   def insert(from, to) do
     changeset(%Server.Invitation{}, %{from: from, to: to})

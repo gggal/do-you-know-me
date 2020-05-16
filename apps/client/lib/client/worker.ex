@@ -1,6 +1,7 @@
 defmodule Client.Worker do
   use GenServer
   require Logger
+
   # TODO: client sending invitation/question/guess/answer to themselves
 
   @server_name Application.get_env(:client, :server_name, :quiz_server)

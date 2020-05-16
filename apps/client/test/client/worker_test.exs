@@ -158,7 +158,7 @@ defmodule Client.WorkerTest do
     start_game()
     GenServer.cast({:global, :quiz_server}, {:client_send_to_guess, "username1", "username2", :a})
     state()
-    true == GenServer.call(:quiz_client, {:guess, "username1", :b})
+    true == GenServer.call(:wewquiz_client, {:guess, "username1", :b})
     assert [{"username1", 0, 100}] == GenServer.call(:quiz_client, :get_rating)
   end
 
