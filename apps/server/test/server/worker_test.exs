@@ -7,20 +7,25 @@ defmodule Server.WorkerTest do
 
   require Logger
 
+  alias Server.State
+
   def node1(), do: :"node1@127.0.0.1"
   def node2(), do: :"node2@127.0.0.1"
   def node3(), do: :"node3@127.0.0.1"
 
   setup do
     :sys.replace_state(server_pid(), fn _state ->
-      %{"node2@127.0.0.1": "username2", "node3@127.0.0.1": "username3"}
+      %State{
+        users: %{"username2" => [:"node2@127.0.0.1"], "username3" => [:"node3@127.0.0.1"]},
+        clients: %{"node2@127.0.0.1": "username2", "node3@127.0.0.1": "username3"}
+      }
     end)
 
     on_exit(&teardown/0)
   end
 
   defp teardown do
-    :sys.replace_state(server_pid(), fn _state -> %{} end)
+    :sys.replace_state(server_pid(), fn _state -> State.new() end)
   end
 
   test "unsuccessful registration with empty username" do
@@ -68,11 +73,11 @@ defmodule Server.WorkerTest do
   end
 
   test "add user to online users list when registering" do
-    assert "username2" == :sys.get_state(server_pid()) |> Map.get(node2())
+    assert "username2" == :sys.get_state(server_pid()) |> State.get_user(node2())
   end
 
   test "failing to unregister a non-registered client" do
-    assert :not_registered == remote_call(node1(), {:unregister, "password"})
+    assert :unauthenticated == remote_call(node1(), {:unregister, "password"})
   end
 
   test "failing to unregister unauthenticated client" do
@@ -147,7 +152,7 @@ defmodule Server.WorkerTest do
     stub_login()
 
     assert :ok = remote_call(node1(), {:login, "username1", "password"})
-    assert "username1" == :sys.get_state(server_pid()) |> Map.get(node1())
+    assert "username1" == :sys.get_state(server_pid()) |> State.get_user(node1())
   end
 
   # @tag :skip
@@ -198,22 +203,22 @@ defmodule Server.WorkerTest do
 
   test "inviting user for the second time should be ignored" do
     stub_invite_user()
+    InvitationMock |> expect(:exists?, fn _, _ -> true end)
 
-    assert :ok == remote_call(node3(), {:invite, "username2"})
-    assert :ok == remote_call(node3(), {:invite, "username2"})
+    assert :not_eligible == remote_call(node3(), {:invite, "username2"})
   end
 
   test "user tries to invite themselves" do
     stub_invite_user()
 
-    assert :ok == remote_call(node2(), {:invite, "username2"})
+    assert :not_eligible == remote_call(node2(), {:invite, "username2"})
   end
 
   test "user invites someone who they're playing with" do
     stub_invite_user()
     GameMock |> expect(:exists?, fn _, _ -> true end)
 
-    assert :ok == remote_call(node2(), {:invite, "username3"})
+    assert :not_eligible == remote_call(node2(), {:invite, "username3"})
   end
 
   test "users invite each other but starting game fails" do
