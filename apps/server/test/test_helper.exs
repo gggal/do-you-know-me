@@ -1,5 +1,6 @@
-Code.require_file("test/server/cluster.ex")
 # Code.load_file("test/server/test_client.ex")
+Code.require_file("test/server/cluster.ex")
+
 Server.Cluster.spawn()
 Application.ensure_all_started(:mox)
 ExUnit.start(exclude: [:skip])

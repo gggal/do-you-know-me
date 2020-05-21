@@ -14,6 +14,13 @@ defmodule Server.WorkerTest do
   def node3(), do: :"node3@127.0.0.1"
 
   setup do
+    # send dummy clients this pid, so they can redirect everything they're being sent
+    # this requires synchronous test execution
+    :ok = GenServer.call({:quiz_client, node1()}, :set_tester)
+    :ok = GenServer.call({:quiz_client, node2()}, :set_tester)
+    :ok = GenServer.call({:quiz_client, node3()}, :set_tester)
+
+    # put the server in a consistent initial state
     :sys.replace_state(server_pid(), fn _state ->
       %State{
         users: %{"username2" => [:"node2@127.0.0.1"], "username3" => [:"node3@127.0.0.1"]},
@@ -142,6 +149,36 @@ defmodule Server.WorkerTest do
     assert :ok == remote_call(node1(), {:login, "username1", "password"})
   end
 
+  test "invitations are sent after login" do
+    stub_login()
+    remote_call(node1(), {:login, "username1", "password"})
+
+    assert :ok == received(node1(), :cast, {:add_invitation, "username2"})
+  end
+
+  test "questions for answering are sent after login" do
+    stub_login()
+    QuestionMock |> expect(:get_question_answer, 2, fn _ -> {:ok, nil} end)
+    remote_call(node1(), {:login, "username1", "password"})
+
+    assert :ok == received(node1(), :cast, {:add_question, "username3", 1})
+  end
+
+  test "questions for guessing are sent after login" do
+    stub_login()
+    QuestionMock |> expect(:get_question_guess, 2, fn _ -> {:ok, nil} end)
+    remote_call(node1(), {:login, "username1", "password"})
+
+    assert :ok == received(node1(), :cast, {:add_guess, "username3", 2, :a})
+  end
+
+  test "questions for review are sent after login" do
+    stub_login()
+    remote_call(node1(), {:login, "username1", "password"})
+
+    assert :ok == received(node1(), :cast, {:add_see, "username3", 1, :a, :b})
+  end
+
   test "successful login of a user from second client" do
     stub_login()
 
@@ -150,25 +187,22 @@ defmodule Server.WorkerTest do
 
   test "add user to online users list when logging in" do
     stub_login()
-
     assert :ok = remote_call(node1(), {:login, "username1", "password"})
     assert "username1" == :sys.get_state(server_pid()) |> State.get_user(node1())
   end
 
-  # @tag :skip
-  # test "remove user from online users list when client is disconnecting" do
-  #   remote_call(node1(), {:register, "username1", "password"})
+  test "remove user from online users list when client is disconnecting" do
+    send(server_pid(), {:DOWN, "a", :process, {"s", node2()}, "a"})
+    Process.sleep(1_000)
+    assert nil == :sys.get_state(server_pid()) |> State.get_user(node2())
+  end
 
-  #   assert "username1" == :sys.get_state(@server_pid) |> Map.get(node1)
-  #   send {:global, :quiz_server}, {:DOWN, _ref, node1(), _pid, _reason}
-  #   assert nil == :sys.get_state(@server_pid) |> Map.get(node1)
-  # end
-  # @tag :skip
-  # test "disconnection of unknown client gets ignored" do
-  #   state = :sys.get_state(@server_pid)
-  #   send {:global, :quiz_server}, {:DOWN, _ref, node1(), _pid, _reason}
-  #   assert state == :sys.get_state(@server_pid)
-  # end
+  test "disconnection of unknown client gets ignored" do
+    initial_state = :sys.get_state(server_pid())
+    send(server_pid(), {:DOWN, "a", :process, {"s", :invalid}, "a"})
+    Process.sleep(1_000)
+    assert initial_state == :sys.get_state(server_pid())
+  end
 
   test "try listing users from not logged in client" do
     assert :unauthenticated == remote_call(node1(), :list_users)
@@ -240,7 +274,6 @@ defmodule Server.WorkerTest do
   test "user tries to send invitation but insert query fails" do
     stub_invite_user()
     InvitationMock |> expect(:insert, fn _, _ -> false end)
-
     assert :db_error == remote_call(node3(), {:invite, "username2"})
   end
 
@@ -248,6 +281,22 @@ defmodule Server.WorkerTest do
     stub_invite_user()
 
     assert :ok == remote_call(node3(), {:invite, "username2"})
+  end
+
+  test "the client is called after sending invitation" do
+    stub_invite_user()
+    remote_call(node3(), {:invite, "username2"})
+    assert :ok = received(node2(), :cast, {:add_invitation, "username3"})
+  end
+
+  test "the clients are called after mutual invitation" do
+    stub_invite_user()
+    InvitationMock |> expect(:exists?, 3, fn from, _to -> from == "username2" end)
+    GameMock |> expect(:start, fn _, _ -> true end)
+    remote_call(node3(), {:invite, "username2"})
+    remote_call(node2(), {:invite, "username3"})
+    assert :ok = received(node2(), :cast, {:add_question, "username3", 0})
+    assert :ok = received(node3(), :cast, {:add_question, "username2", 0})
   end
 
   test "try accepting invitation from not logged in client" do
@@ -279,6 +328,13 @@ defmodule Server.WorkerTest do
     stub_accept_invitation()
 
     assert :ok == remote_call(node3(), {:accept, "username2"})
+  end
+
+  test "the clients are called after a game starts" do
+    stub_accept_invitation()
+    remote_call(node3(), {:accept, "username2"})
+    assert :ok = received(node2(), :cast, {:add_question, "username3", 0})
+    assert :ok = received(node3(), :cast, {:add_question, "username2", 0})
   end
 
   test "try declining invitation from not logged in client" do
@@ -356,11 +412,19 @@ defmodule Server.WorkerTest do
     assert :db_error = remote_call(node3(), {:answer_question, "username2", "a"})
   end
 
-  # test "a 'guess' message is being sent to the other user upon answering" do
-  # end
+  test "a 'guess' message is being sent to the other user upon answering" do
+    stub_answer()
+    remote_call(node3(), {:answer_question, "username2", "a"})
 
-  # test "an 'answer' message is being sent to the user upon answering" do
-  # end
+    assert :ok = received(node3(), :cast, {:add_question, "username2", 0})
+  end
+
+  test "an 'answer' message is being sent to the user upon answering" do
+    stub_answer()
+    remote_call(node3(), {:answer_question, "username2", "a"})
+
+    assert :ok = received(node2(), :cast, {:add_guess, "username3", 0, "a"})
+  end
 
   test "answer a question when other user is not online" do
     stub_answer()
@@ -404,14 +468,6 @@ defmodule Server.WorkerTest do
     assert :no_such_game = remote_call(node2(), {:guess_question, "username1", "a"})
   end
 
-  @tag :skip
-  test "try guessing a question but question is nil (invalid db state)" do
-    stub_guess()
-    GameMock |> expect(:get_question, fn _, _ -> {:ok, nil} end)
-
-    assert :db_error = remote_call(node2(), {:guess_question, "username1", "a"})
-  end
-
   test "try guessing a question but db query fails" do
     stub_guess()
     GameMock |> expect(:guess_question, fn _, _, _ -> false end)
@@ -419,8 +475,12 @@ defmodule Server.WorkerTest do
     assert :db_error = remote_call(node2(), {:guess_question, "username1", "a"})
   end
 
-  # test "send the other client a 'show' message" do
-  # end
+  test "a 'show' message is being sent to the other user upon guessing" do
+    stub_guess()
+    remote_call(node3(), {:guess_question, "username2", "a"})
+
+    assert :ok = received(node2(), :cast, {:add_see, "username3", 0, "a", "a"})
+  end
 
   test "guess a question when other user is not online" do
     stub_guess()
@@ -510,12 +570,6 @@ defmodule Server.WorkerTest do
     assert {:ok, 66.67, 33.33} = remote_call(node2(), {:get_score, "username1"})
   end
 
-  # test "sending msg upon successful score retrieval" do
-
-  # end2
-
-  # todo reconnect tests
-
   defp stub_register_user do
     stub(UserMock, :exists?, fn _name -> false end)
     stub(UserMock, :insert, fn _name, _ -> true end)
@@ -529,8 +583,18 @@ defmodule Server.WorkerTest do
   defp stub_login do
     UserMock |> stub(:exists?, fn _name -> true end)
     UserMock |> stub(:get_password, fn _name -> "password" end)
-    InvitationMock |> stub(:get_all_for, fn _ -> {:ok, []} end)
-    GameMock |> stub(:all_related, fn _ -> [] end)
+    InvitationMock |> stub(:get_all_for, fn _ -> {:ok, ["username2"]} end)
+    GameMock |> stub(:all_related, fn _ -> ["username3"] end)
+
+    GameMock
+    |> stub(
+      :get_question,
+      fn _, user -> if user == "username1", do: {:ok, 1}, else: {:ok, 2} end
+    )
+
+    QuestionMock |> stub(:get_question_number, fn num -> {:ok, num} end)
+    QuestionMock |> stub(:get_question_answer, fn _ -> {:ok, :a} end)
+    QuestionMock |> stub(:get_question_guess, fn _ -> {:ok, :b} end)
   end
 
   defp stub_answer do
@@ -588,4 +652,12 @@ defmodule Server.WorkerTest do
   end
 
   defp server_pid, do: :global.whereis_name(:quiz_server)
+
+  defp received(node, type, msg) do
+    receive do
+      {^node, ^type, ^msg} -> :ok
+    after
+      5_000 -> :time_out
+    end
+  end
 end

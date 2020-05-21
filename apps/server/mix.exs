@@ -11,6 +11,7 @@ defmodule Server.MixProject do
       lockfile: "../../mix.lock",
       elixir: "~> 1.6",
       start_permanent: Mix.env() == :prod,
+      elixirc_paths: elixirc_paths(Mix.env),
       deps: deps()
     ]
   end
@@ -23,6 +24,10 @@ defmodule Server.MixProject do
       mod: {Server.Application, []}
     ]
   end
+
+  # Specify which paths to compile per environment.
+  defp elixirc_paths(:test), do: ["lib", "test/server"]
+  defp elixirc_paths(_),     do: ["lib"]
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do

@@ -51,6 +51,10 @@ defmodule Server.Worker do
     end
   end
 
+  def handle_info(_, state) do
+    {:noreply, state}
+  end
+
   @doc """
   Registers and logs in a new user. Possible responses are:
     :taken - if the name the user picked is already taken
@@ -284,6 +288,7 @@ defmodule Server.Worker do
     if invitation_model().exists?(to, from) do
       start_game_helper(from, to, state)
     else
+      send_user(to, state, {:add_invitation, from})
       invitation_model().insert(from, to)
     end
   end
@@ -292,8 +297,8 @@ defmodule Server.Worker do
     if game_model().start(from, to) do
       {:ok, q1} = get_q_number({from, to}, from)
       {:ok, q2} = get_q_number({from, to}, to)
-      send_user(from, state, {:add_question, q1, to})
-      send_user(to, state, {:add_question, q2, from})
+      send_user(from, state, {:add_question, to, q1})
+      send_user(to, state, {:add_question, from, q2})
       true
     else
       false
@@ -304,7 +309,7 @@ defmodule Server.Worker do
     with {:ok, old_question} <- get_q_number({from, to}, from),
          true <- game_model().answer_question({from, to}, from, answer),
          {:ok, new_question} <- get_q_number({from, to}, from) do
-      send_user(to, state, {:add_question, new_question, from})
+      send_user(to, state, {:add_question, from, new_question})
       send_user(from, state, {:add_guess, to, old_question, answer})
 
       :ok
@@ -321,14 +326,14 @@ defmodule Server.Worker do
     for other <- game_model().all_related(user) do
       with {:ok, q1} <- game_model().get_question({user, other}, user),
            {:ok, q2} <- game_model().get_question({user, other}, other),
-           {:ok, q1_num} <- question_model().get_number(q1),
-           {:ok, q1_answer} <- question_model().get_answer(q1),
-           {:ok, q1_guess} <- question_model().get_guess(q1),
-           {:ok, q2_num} <- question_model().get_number(q2),
-           {:ok, q2_answer} <- question_model().get_answer(q2),
-           {:ok, q2_guess} <- question_model().get_guess(q2) do
+           {:ok, q1_num} <- question_model().get_question_number(q1),
+           {:ok, q1_answer} <- question_model().get_question_answer(q1),
+           {:ok, q1_guess} <- question_model().get_question_guess(q1),
+           {:ok, q2_num} <- question_model().get_question_number(q2),
+           {:ok, q2_answer} <- question_model().get_question_answer(q2),
+           {:ok, q2_guess} <- question_model().get_question_guess(q2) do
         if is_nil(q1_answer) do
-          send_user(user, state, {:add_question, q1_num, other})
+          send_user(user, state, {:add_question, other, q1_num})
         end
 
         if not is_nil(q2_answer) and is_nil(q2_guess) do

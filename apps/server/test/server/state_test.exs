@@ -1,4 +1,4 @@
-defmodule Server.WorkerTest do
+defmodule Server.StateTest do
   use ExUnit.Case
 
   alias Server.State

@@ -5,6 +5,7 @@ defmodule QuizGame.MixProject do
     [
       apps_path: "apps",
       start_permanent: Mix.env() == :prod,
+      elixirc_paths: ["lib", "test"],
       deps: deps()
     ]
   end

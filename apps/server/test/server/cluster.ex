@@ -1,4 +1,5 @@
 defmodule Server.Cluster do
+
   def spawn do
     :net_kernel.start([:"first@127.0.0.1"])
 
@@ -6,7 +7,7 @@ defmodule Server.Cluster do
     {:ok, ipv4} = :inet.parse_ipv4_address('127.0.0.1')
     :erl_boot_server.add_slave(ipv4)
 
-    nodes = [:"node1@127.0.0.1", :"node2@127.0.0.1", :"node3@127.0.0.1"]
+    nodes = [:node1, :node2, :node3]
 
     nodes
     |> Enum.map(&Task.async(fn -> spawn_node(&1) end))
@@ -14,10 +15,9 @@ defmodule Server.Cluster do
   end
 
   defp spawn_node(node_host) do
-    {:ok, node} = :slave.start(to_charlist("127.0.0.1"), node_name(node_host), inet_loader_args())
+    {:ok, node} = :slave.start(to_charlist("127.0.0.1"), node_host, inet_loader_args())
     :ok = add_code_paths(node)
-    transfer_configuration(node)
-    ensure_applications_started(node)
+    ensure_dummy_client_started(node)
     {:ok, node}
   end
 
@@ -30,31 +30,17 @@ defmodule Server.Cluster do
   end
 
   defp add_code_paths(node) do
+
+    Code.require_file("test/server/test_client.exs")
+    IO.puts("Here: #{inspect(:code.get_path())}")
     rpc(node, :code, :add_paths, [:code.get_path()])
   end
 
-  defp transfer_configuration(node) do
-    for {app_name, _, _} <- Application.loaded_applications() do
-      for {key, val} <- Application.get_all_env(app_name) do
-        rpc(node, Application, :put_env, [app_name, key, val])
-      end
-    end
-  end
-
-  defp ensure_applications_started(node) do
+  defp ensure_dummy_client_started(node) do
     rpc(node, Application, :ensure_all_started, [:mix])
     rpc(node, Mix, :env, [Mix.env()])
+    rpc(node, Code, :require_file, "test/server/test_client.exs")
 
-    for {app_name, _, _} <- Application.loaded_applications() do
-      rpc(node, Application, :ensure_all_started, [app_name])
-    end
-  end
-
-  defp node_name(node_host) do
-    node_host
-    |> to_string
-    |> String.split("@")
-    |> Enum.at(0)
-    |> String.to_atom()
+    {:ok, _pid} = rpc(node, Server.TestClient, :start_link, [])
   end
 end

@@ -5,8 +5,6 @@ defmodule Server.UserTest do
 
   @username TestUtil.random_username()
 
-  # todo test if changes get rollbacked when delete transaction fails
-
   setup_all do
     assert %Server.User{username: @username, password: ""} |> DB.Repo.insert() |> elem(0) == :ok
 
