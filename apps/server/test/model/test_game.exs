@@ -496,6 +496,82 @@ defmodule Server.GameTest do
              |> Question.get_question_guess()
   end
 
+  test "try guessing question but there's no such game" do
+    user3 = TestUtil.random_username()
+    assert true == User.insert(user3, "password")
+
+    assert false == Game.guess_question({@username1, user3}, @username1, "a")
+
+    on_exit(fn -> %User{username: user3} |> DB.Repo.delete() end)
+  end
+
+  test "try guessing question but there's no such user1" do
+    assert false ==
+             Game.guess_question({TestUtil.random_username(), @username1}, @username1, "a")
+  end
+
+  test "try guessing question but there's no such user2" do
+    assert false ==
+             Game.guess_question({@username1, TestUtil.random_username()}, @username1, "a")
+  end
+
+  test "try guessing question but first user is nil" do
+    assert false ==
+             Game.guess_question({nil, @username1}, @username1, "a")
+  end
+
+  test "try guessing question but sec user is nil" do
+    assert false ==
+             Game.guess_question({@username1, nil}, @username1, "a")
+  end
+
+  test "try guessing question but 'from' user is nil" do
+    assert false ==
+             Game.guess_question({@username1, @username2}, nil, "a")
+  end
+
+  test "try guessing question but 'from' user is not user1 or user2" do
+    assert false ==
+             Game.guess_question({@username1, @username2}, TestUtil.random_username(), "a")
+  end
+
+  test "guessing question but the answer is invalid" do
+    assert false ==
+             Game.guess_question({@username1, @username2}, @username2, "d")
+  end
+
+  test "guessing question with nil answer" do
+    assert true ==
+             Game.guess_question({@username1, @username2}, @username1, nil)
+  end
+
+  test "rollback guessing question when setting answer fails" do
+    q_number =
+      Game.get_question({@username1, @username2}, @username1)
+      |> elem(1)
+      |> Question.get_question_number()
+
+    assert false ==
+             Game.guess_question({@username1, @username2}, nil, nil)
+
+    assert q_number ==
+             Game.get_question({@username1, @username2}, @username1)
+             |> elem(1)
+             |> Question.get_question_number()
+  end
+
+  test "guess changes when guessing question successfully" do
+    assert true ==
+             Game.guess_question({@username1, @username2}, @username1, "b")
+
+    assert {:ok, "b"} ==
+             Game.get_question({@username1, @username2}, @username1)
+             |> elem(1)
+             |> Question.get_question_guess()
+  end
+
+  ##########################
+
   def teardown(user_to_del, _game_to_del = {user1, user2}) do
     %Game{user1: user1, user2: user2} |> DB.Repo.delete()
     %User{username: user_to_del} |> DB.Repo.delete()

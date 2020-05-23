@@ -1,12 +1,12 @@
 defmodule Game do
-  @callback exists?(String.t(), Stirng.t()) :: boolean()
-  @callback insert(String.t(), Stirng.t()) :: boolean()
-  @callback start(String.t(), Stirng.t()) :: boolean()
-  @callback all_related(String.t()) :: [Sting.t()]
-  @callback get_score({String.t(), Stirng.t()}, String.t()) :: :err | {:ok, integer()}
-  @callback get_question({String.t(), Stirng.t()}, String.t()) :: :err | {:ok, integer()}
-  @callback answer_question({String.t(), Stirng.t()}, String.t(), String.t()) :: boolean()
-  @callback guess_question({String.t(), Stirng.t()}, String.t(), String.t()) :: boolean()
+  @callback exists?(String.t(), String.t()) :: boolean()
+  @callback insert(String.t(), String.t()) :: boolean()
+  @callback start(String.t(), String.t()) :: boolean()
+  @callback all_related(String.t()) :: [String.t()]
+  @callback get_score({String.t(), String.t()}, String.t()) :: :err | {:ok, integer()}
+  @callback get_question({String.t(), String.t()}, String.t()) :: :err | {:ok, integer()}
+  @callback answer_question({String.t(), String.t()}, String.t(), String.t()) :: boolean()
+  @callback guess_question({String.t(), String.t()}, String.t(), String.t()) :: boolean()
 end
 
 defmodule Server.Game do
@@ -158,7 +158,6 @@ defmodule Server.Game do
 
       {:error, reason} ->
         Logger.error("Failed to answer question, reason: #{reason}")
-        # {false, reason}
         false
     end
   end
