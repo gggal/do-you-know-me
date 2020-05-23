@@ -1,5 +1,4 @@
-defmodule Game1 do
-  # TODO rename this to Game once you remove the umbrella
+defmodule Game do
   @callback exists?(String.t(), Stirng.t()) :: boolean()
   @callback insert(String.t(), Stirng.t()) :: boolean()
   @callback start(String.t(), Stirng.t()) :: boolean()
@@ -11,7 +10,7 @@ defmodule Game1 do
 end
 
 defmodule Server.Game do
-  @behaviour Game1
+  @behaviour Game
 
   use Ecto.Schema
   import Ecto.Changeset

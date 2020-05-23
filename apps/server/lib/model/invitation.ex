@@ -1,4 +1,4 @@
-defmodule Invitation1 do
+defmodule Invitation do
   @callback exists?(String.t(), String.t()) :: boolean()
   @callback insert(String.t(), String.t()) :: boolean()
   @callback delete(String.t(), String.t()) :: boolean()
@@ -6,7 +6,7 @@ defmodule Invitation1 do
 end
 
 defmodule Server.Invitation do
-  @behaviour Invitation1
+  @behaviour Invitation
 
   require Ecto.Query
   use Ecto.Schema

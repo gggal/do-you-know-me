@@ -3,7 +3,6 @@ defmodule Server.ScoreTest do
 
   alias Server.Score
 
-  # TODO think about reusing this module
   defmodule ScoreState do
     use Agent
 
