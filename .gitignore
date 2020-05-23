@@ -21,7 +21,9 @@ erl_crash.dump
 
 # custom log files
 /apps/server/server.log
+/apps/server/server_test.log
 /apps/client/client.log
+/apps/client/client_test.log
 /apps/*/app.log
 /app.log
 
