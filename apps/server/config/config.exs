@@ -1,5 +1,13 @@
 import Config
 
+config :server, DB.Repo,
+  database: "dykm_repo",
+  username: "dykm_user",
+  password: "dykm_password",
+  hostname: "localhost"
+
+config :server, ecto_repos: [DB.Repo]
+
 config :logger,
   backends: [{LoggerFileBackend, :server_error_log}]
 

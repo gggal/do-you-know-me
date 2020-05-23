@@ -1,5 +1,4 @@
 defmodule Server.Cluster do
-
   def spawn do
     :net_kernel.start([:"first@127.0.0.1"])
 
@@ -30,9 +29,7 @@ defmodule Server.Cluster do
   end
 
   defp add_code_paths(node) do
-
     Code.require_file("test/server/test_client.exs")
-    IO.puts("Here: #{inspect(:code.get_path())}")
     rpc(node, :code, :add_paths, [:code.get_path()])
   end
 
