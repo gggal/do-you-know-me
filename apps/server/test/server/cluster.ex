@@ -29,14 +29,12 @@ defmodule Server.Cluster do
   end
 
   defp add_code_paths(node) do
-    Code.require_file("test/server/test_client.exs")
     rpc(node, :code, :add_paths, [:code.get_path()])
   end
 
   defp ensure_dummy_client_started(node) do
     rpc(node, Application, :ensure_all_started, [:mix])
     rpc(node, Mix, :env, [Mix.env()])
-    rpc(node, Code, :require_file, "test/server/test_client.exs")
 
     {:ok, _pid} = rpc(node, Server.TestClient, :start_link, [])
   end
