@@ -39,45 +39,45 @@ defmodule Server.WorkerTest do
     test "unsuccessful registration with empty username" do
       stub_register_user()
 
-      assert :invalid_username == remote_call(node1(), {:register, "", "pass"})
+      assert :invalid_username == call_server(node1(), :register, ["", "pass"])
     end
 
     test "unsuccessful registration with empty password" do
       stub_register_user()
 
-      assert :invalid_password == remote_call(node1(), {:register, "username1", ""})
+      assert :invalid_password == call_server(node1(), :register, ["username1", ""])
     end
 
     test "unsuccessful registration with ill-formatted username" do
       stub_register_user()
 
-      assert :invalid_username == remote_call(node1(), {:register, "&@#", "password"})
+      assert :invalid_username == call_server(node1(), :register, ["&@#", "password"])
     end
 
     test "unsuccessful registration for already registered client" do
       stub_register_user()
 
-      assert :already_registered == remote_call(node2(), {:register, "username4", "password"})
+      assert :already_registered == call_server(node2(), :register, ["username4", "password"])
     end
 
     test "unsuccessful registration for a client with already taken name" do
       stub_register_user()
       UserMock |> expect(:exists?, fn _name -> true end)
 
-      assert :taken == remote_call(node1(), {:register, "username2", "password"})
+      assert :taken == call_server(node1(), :register, ["username2", "password"])
     end
 
     test "unsuccessful registration due to failed insert query" do
       stub_register_user()
       expect(UserMock, :insert, fn _name, _ -> false end)
 
-      assert :db_error == remote_call(node1(), {:register, "username1", "password"})
+      assert :db_error == call_server(node1(), :register, ["username1", "password"])
     end
 
     test "successfully registering a client" do
       stub_register_user()
 
-      assert :ok == remote_call(node1(), {:register, "username1", "password"})
+      assert :ok == call_server(node1(), :register, ["username1", "password"])
     end
 
     test "add user to online users list when registering" do
@@ -87,32 +87,32 @@ defmodule Server.WorkerTest do
 
   describe "unregister" do
     test "failing to unregister a non-registered client" do
-      assert :unauthenticated == remote_call(node1(), {:unregister, "password"})
+      assert :unauthenticated == call_server(node1(), :unregister, ["password"])
     end
 
     test "failing to unregister unauthenticated client" do
       stub_unregister_user()
 
-      assert :unauthenticated == remote_call(node2(), {:unregister, "wrong_password"})
+      assert :unauthenticated == call_server(node2(), :unregister, ["wrong_password"])
     end
 
     test "failing to unregister client when db fail occurs" do
       stub_unregister_user()
 
       UserMock |> expect(:delete, fn _name -> false end)
-      assert :db_error == remote_call(node2(), {:unregister, "password"})
+      assert :db_error == call_server(node2(), :unregister, ["password"])
     end
 
     test "remove user from online users list when unregistering" do
       stub_unregister_user()
 
-      assert :ok == remote_call(node2(), {:unregister, "password"})
+      assert :ok == call_server(node2(), :unregister, ["password"])
     end
 
     test "successfully unregistering a client" do
       stub_unregister_user()
 
-      assert :ok == remote_call(node2(), {:unregister, "password"})
+      assert :ok == call_server(node2(), :unregister, ["password"])
     end
   end
 
@@ -120,43 +120,43 @@ defmodule Server.WorkerTest do
     test "unsuccessful login for already logged in client" do
       stub_login()
 
-      assert :already_logged_in == remote_call(node2(), {:login, "username2", "password"})
+      assert :already_logged_in == call_server(node2(), :login, ["username2", "password"])
     end
 
     test "unsuccessful login for unregistered user" do
       stub_login()
       UserMock |> expect(:exists?, fn _name -> false end)
 
-      assert :wrong_credentials == remote_call(node1(), {:login, "username1", "password"})
+      assert :wrong_credentials == call_server(node1(), :login, ["username1", "password"])
     end
 
     test "unsuccessful login because of wrong password" do
       stub_login()
 
-      assert :wrong_credentials == remote_call(node1(), {:login, "username1", "wrong_password"})
+      assert :wrong_credentials == call_server(node1(), :login, ["username1", "wrong_password"])
     end
 
     test "unsuccessful login because of empty string password" do
       stub_login()
 
-      assert :wrong_credentials == remote_call(node1(), {:login, "username1", ""})
+      assert :wrong_credentials == call_server(node1(), :login, ["username1", ""])
     end
 
     test "unsuccessful login because of nil password" do
       stub_login()
 
-      assert :wrong_credentials == remote_call(node1(), {:login, "username1", nil})
+      assert :wrong_credentials == call_server(node1(), :login, ["username1", nil])
     end
 
     test "successful login" do
       stub_login()
 
-      assert :ok == remote_call(node1(), {:login, "username1", "password"})
+      assert :ok == call_server(node1(), :login, ["username1", "password"])
     end
 
     test "invitations are sent after login" do
       stub_login()
-      remote_call(node1(), {:login, "username1", "password"})
+      call_server(node1(), :login, ["username1", "password"])
 
       assert :ok == received(node1(), :cast, {:add_invitation, "username2"})
     end
@@ -164,7 +164,7 @@ defmodule Server.WorkerTest do
     test "questions for answering are sent after login" do
       stub_login()
       QuestionMock |> expect(:get_question_answer, 2, fn _ -> {:ok, nil} end)
-      remote_call(node1(), {:login, "username1", "password"})
+      call_server(node1(), :login, ["username1", "password"])
 
       assert :ok == received(node1(), :cast, {:add_question, "username3", 1})
     end
@@ -172,14 +172,14 @@ defmodule Server.WorkerTest do
     test "questions for guessing are sent after login" do
       stub_login()
       QuestionMock |> expect(:get_question_guess, 2, fn _ -> {:ok, nil} end)
-      remote_call(node1(), {:login, "username1", "password"})
+      call_server(node1(), :login, ["username1", "password"])
 
       assert :ok == received(node1(), :cast, {:add_guess, "username3", 2, :a})
     end
 
     test "questions for review are sent after login" do
       stub_login()
-      remote_call(node1(), {:login, "username1", "password"})
+      call_server(node1(), :login, ["username1", "password"])
 
       assert :ok == received(node1(), :cast, {:add_see, "username3", 1, :a, :b})
     end
@@ -187,12 +187,12 @@ defmodule Server.WorkerTest do
     test "successful login of a user from second client" do
       stub_login()
 
-      assert :ok == remote_call(node1(), {:login, "username2", "password"})
+      assert :ok == call_server(node1(), :login, ["username2", "password"])
     end
 
     test "add user to online users list when logging in" do
       stub_login()
-      assert :ok = remote_call(node1(), {:login, "username1", "password"})
+      assert :ok = call_server(node1(), :login, ["username1", "password"])
       assert "username1" == :sys.get_state(server_pid()) |> State.get_user(node1())
     end
   end
@@ -214,58 +214,58 @@ defmodule Server.WorkerTest do
 
   describe "list users" do
     test "try listing users from not logged in client" do
-      assert :unauthenticated == remote_call(node1(), :list_users)
+      assert :unauthenticated == call_server(node1(), :list_users, [])
     end
 
     test "list users successfully" do
       to_return = ["user1", "user2", "user3"]
       UserMock |> expect(:all, fn -> to_return end)
-      assert {:ok, to_return} == remote_call(node2(), :list_users)
+      assert {:ok, to_return} == call_server(node2(), :list_users, [])
     end
   end
 
   describe "list related users" do
     test "try listing related users from not logged in client" do
-      assert :unauthenticated == remote_call(node1(), :list_related)
+      assert :unauthenticated == call_server(node1(), :list_related, [])
     end
 
     test "list related users successfully" do
       to_return = ["user1", "user2", "user3"]
       GameMock |> expect(:all_related, fn _ -> to_return end)
-      assert {:ok, to_return} == remote_call(node2(), :list_related)
+      assert {:ok, to_return} == call_server(node2(), :list_related, [])
     end
   end
 
   describe "invite" do
     test "try sending invitation from not logged in client" do
-      assert :unauthenticated == remote_call(node1(), {:invite, "username"})
+      assert :unauthenticated == call_server(node1(), :invite, ["username"])
     end
 
     test "try inviting non-existent user" do
       stub_invite_user()
       UserMock |> expect(:exists?, fn _name -> false end)
 
-      assert :no_such_user == remote_call(node2(), {:invite, "invalid_username"})
+      assert :no_such_user == call_server(node2(), :invite, ["invalid_username"])
     end
 
     test "inviting user for the second time should be ignored" do
       stub_invite_user()
       InvitationMock |> expect(:exists?, fn _, _ -> true end)
 
-      assert :not_eligible == remote_call(node3(), {:invite, "username2"})
+      assert :not_eligible == call_server(node3(), :invite, ["username2"])
     end
 
     test "user tries to invite themselves" do
       stub_invite_user()
 
-      assert :not_eligible == remote_call(node2(), {:invite, "username2"})
+      assert :not_eligible == call_server(node2(), :invite, ["username2"])
     end
 
     test "user invites someone who they're playing with" do
       stub_invite_user()
       GameMock |> expect(:exists?, fn _, _ -> true end)
 
-      assert :not_eligible == remote_call(node2(), {:invite, "username3"})
+      assert :not_eligible == call_server(node2(), :invite, ["username3"])
     end
 
     test "users invite each other but starting game fails" do
@@ -273,7 +273,7 @@ defmodule Server.WorkerTest do
       InvitationMock |> expect(:exists?, 2, fn from, _sto -> from == "username2" end)
       GameMock |> expect(:start, fn _, _ -> false end)
 
-      assert :db_error == remote_call(node3(), {:invite, "username2"})
+      assert :db_error == call_server(node3(), :invite, ["username2"])
     end
 
     test "users invite each other successfully" do
@@ -281,24 +281,24 @@ defmodule Server.WorkerTest do
       InvitationMock |> expect(:exists?, 2, fn from, _to -> from == "username2" end)
       GameMock |> expect(:start, fn _, _ -> true end)
 
-      assert :ok == remote_call(node3(), {:invite, "username2"})
+      assert :ok == call_server(node3(), :invite, ["username2"])
     end
 
     test "user tries to send invitation but insert query fails" do
       stub_invite_user()
       InvitationMock |> expect(:insert, fn _, _ -> false end)
-      assert :db_error == remote_call(node3(), {:invite, "username2"})
+      assert :db_error == call_server(node3(), :invite, ["username2"])
     end
 
     test "user sends invitation successfully" do
       stub_invite_user()
 
-      assert :ok == remote_call(node3(), {:invite, "username2"})
+      assert :ok == call_server(node3(), :invite, ["username2"])
     end
 
     test "the client is called after sending invitation" do
       stub_invite_user()
-      remote_call(node3(), {:invite, "username2"})
+      call_server(node3(), :invite, ["username2"])
       assert :ok = received(node2(), :cast, {:add_invitation, "username3"})
     end
 
@@ -306,8 +306,8 @@ defmodule Server.WorkerTest do
       stub_invite_user()
       InvitationMock |> expect(:exists?, 3, fn from, _to -> from == "username2" end)
       GameMock |> expect(:start, fn _, _ -> true end)
-      remote_call(node3(), {:invite, "username2"})
-      remote_call(node2(), {:invite, "username3"})
+      call_server(node3(), :invite, ["username2"])
+      call_server(node2(), :invite, ["username3"])
       assert :ok = received(node2(), :cast, {:add_question, "username3", 0})
       assert :ok = received(node3(), :cast, {:add_question, "username2", 0})
     end
@@ -315,39 +315,39 @@ defmodule Server.WorkerTest do
 
   describe "accept invitation" do
     test "try accepting invitation from not logged in client" do
-      assert :unauthenticated == remote_call(node1(), {:accept, "username1"})
+      assert :unauthenticated == call_server(node1(), :accept, ["username1"])
     end
 
     test "try accepting invitation from a non-existent user" do
       stub_accept_invitation()
       UserMock |> expect(:exists?, fn _name -> false end)
 
-      assert :no_such_user == remote_call(node2(), {:accept, "username1"})
+      assert :no_such_user == call_server(node2(), :accept, ["username1"])
     end
 
     test "try accepting non-existent invitation" do
       stub_accept_invitation()
       InvitationMock |> expect(:exists?, fn _, _ -> false end)
 
-      assert :no_such_invitation == remote_call(node3(), {:accept, "username2"})
+      assert :no_such_invitation == call_server(node3(), :accept, ["username2"])
     end
 
     test "try accepting invitation but the query fails" do
       stub_accept_invitation()
       GameMock |> expect(:start, fn _, _ -> false end)
 
-      assert :db_error == remote_call(node3(), {:accept, "username2"})
+      assert :db_error == call_server(node3(), :accept, ["username2"])
     end
 
     test "accept invitation successfully" do
       stub_accept_invitation()
 
-      assert :ok == remote_call(node3(), {:accept, "username2"})
+      assert :ok == call_server(node3(), :accept, ["username2"])
     end
 
     test "the clients are called after a game starts" do
       stub_accept_invitation()
-      remote_call(node3(), {:accept, "username2"})
+      call_server(node3(), :accept, ["username2"])
       assert :ok = received(node2(), :cast, {:add_question, "username3", 0})
       assert :ok = received(node3(), :cast, {:add_question, "username2", 0})
     end
@@ -355,92 +355,92 @@ defmodule Server.WorkerTest do
 
   describe "decline invitation" do
     test "try declining invitation from not logged in client" do
-      assert :unauthenticated == remote_call(node1(), {:decline, "username1"})
+      assert :unauthenticated == call_server(node1(), :decline, ["username1"])
     end
 
     test "try declining invitation from a non-existent user" do
       stub_decline_invitation()
       UserMock |> expect(:exists?, fn _name -> false end)
 
-      assert :no_such_user == remote_call(node3(), {:decline, "username2"})
+      assert :no_such_user == call_server(node3(), :decline, ["username2"])
     end
 
     test "try declining non-existent invitation" do
       stub_decline_invitation()
       InvitationMock |> expect(:exists?, fn _, _ -> false end)
 
-      assert :no_such_invitation == remote_call(node3(), {:decline, "username2"})
+      assert :no_such_invitation == call_server(node3(), :decline, ["username2"])
     end
 
     test "try declining invitation but the query fails" do
       stub_decline_invitation()
       InvitationMock |> expect(:delete, fn _, _ -> false end)
 
-      assert :db_error == remote_call(node3(), {:decline, "username2"})
+      assert :db_error == call_server(node3(), :decline, ["username2"])
     end
 
     test "decline invitation successfully" do
       stub_decline_invitation()
 
-      assert :ok == remote_call(node3(), {:decline, "username2"})
+      assert :ok == call_server(node3(), :decline, ["username2"])
     end
   end
 
   describe "answer question" do
     test "try answering a question but the client is not not logged in" do
-      assert :unauthenticated = remote_call(node1(), {:answer_question, "username2", "a"})
+      assert :unauthenticated = call_server(node1(), :answer_question, ["username2", "a"])
     end
 
     test "try answering a question from non-existent user" do
       stub_answer()
       UserMock |> expect(:exists?, fn _ -> false end)
 
-      assert :no_such_user = remote_call(node3(), {:answer_question, "username1", "a"})
+      assert :no_such_user = call_server(node3(), :answer_question, ["username1", "a"])
     end
 
     test "try answering a question but there's no game record" do
       stub_answer()
       GameMock |> expect(:exists?, fn _, _ -> false end)
 
-      assert :no_such_game = remote_call(node3(), {:answer_question, "username2", "a"})
+      assert :no_such_game = call_server(node3(), :answer_question, ["username2", "a"])
     end
 
     test "try answering a question but the answer is not a/b/c" do
       stub_answer()
 
-      assert :invalid_response = remote_call(node3(), {:answer_question, "username2", "d"})
+      assert :invalid_response = call_server(node3(), :answer_question, ["username2", "d"])
     end
 
     test "try answering a question but the answer is nil" do
       stub_answer()
 
-      assert :invalid_response = remote_call(node3(), {:answer_question, "username2", nil})
+      assert :invalid_response = call_server(node3(), :answer_question, ["username2", nil])
     end
 
     test "try answering a question but there's no question in the db" do
       stub_answer()
       QuestionMock |> expect(:get_question_number, fn _ -> false end)
 
-      assert :db_error = remote_call(node3(), {:answer_question, "username2", "a"})
+      assert :db_error = call_server(node3(), :answer_question, ["username2", "a"])
     end
 
     test "try answering a question but the insert query fails" do
       stub_answer()
       GameMock |> expect(:answer_question, fn _, _, _ -> false end)
 
-      assert :db_error = remote_call(node3(), {:answer_question, "username2", "a"})
+      assert :db_error = call_server(node3(), :answer_question, ["username2", "a"])
     end
 
     test "a 'guess' message is being sent to the other user upon answering" do
       stub_answer()
-      remote_call(node3(), {:answer_question, "username2", "a"})
+      call_server(node3(), :answer_question, ["username2", "a"])
 
       assert :ok = received(node3(), :cast, {:add_question, "username2", 0})
     end
 
     test "an 'answer' message is being sent to the user upon answering" do
       stub_answer()
-      remote_call(node3(), {:answer_question, "username2", "a"})
+      call_server(node3(), :answer_question, ["username2", "a"])
 
       assert :ok = received(node2(), :cast, {:add_guess, "username3", 0, "a"})
     end
@@ -448,57 +448,57 @@ defmodule Server.WorkerTest do
     test "answer a question when other user is not online" do
       stub_answer()
 
-      assert :ok = remote_call(node3(), {:answer_question, "username1", "a"})
+      assert :ok = call_server(node3(), :answer_question, ["username1", "a"])
     end
 
     test "answer a question successfully" do
       stub_answer()
 
-      assert :ok = remote_call(node3(), {:answer_question, "username2", "a"})
+      assert :ok = call_server(node3(), :answer_question, ["username2", "a"])
     end
   end
 
   describe "guess question" do
     test "try guess a question but the client is not not logged in" do
-      assert :unauthenticated = remote_call(node1(), {:guess_question, "username2", "a"})
+      assert :unauthenticated = call_server(node1(), :guess_question, ["username2", "a"])
     end
 
     test "try guessing a question but the user doesn't exist" do
       stub_guess()
       UserMock |> expect(:exists?, fn _ -> false end)
 
-      assert :no_such_user = remote_call(node2(), {:guess_question, "username1", "a"})
+      assert :no_such_user = call_server(node2(), :guess_question, ["username1", "a"])
     end
 
     test "try guessing a question but the guess is not valid" do
       stub_guess()
 
-      assert :invalid_response = remote_call(node2(), {:guess_question, "username1", "d"})
+      assert :invalid_response = call_server(node2(), :guess_question, ["username1", "d"])
     end
 
     test "try guessing a question but the guess is nil" do
       stub_guess()
 
-      assert :invalid_response = remote_call(node2(), {:guess_question, "username1", nil})
+      assert :invalid_response = call_server(node2(), :guess_question, ["username1", nil])
     end
 
     test "try guessing a question but there's no such game" do
       stub_guess()
       GameMock |> expect(:exists?, fn _, _ -> false end)
 
-      assert :no_such_game = remote_call(node2(), {:guess_question, "username1", "a"})
+      assert :no_such_game = call_server(node2(), :guess_question, ["username1", "a"])
     end
 
     test "try guessing a question but db query fails" do
       stub_guess()
       GameMock |> expect(:guess_question, fn _, _, _ -> false end)
 
-      assert :db_error = remote_call(node2(), {:guess_question, "username1", "a"})
+      assert :db_error = call_server(node2(), :guess_question, ["username1", "a"])
     end
 
     test "a 'show' message is being sent to the other user upon guessing" do
       stub_guess()
-      remote_call(node3(), {:guess_question, "username2", "a"})
+      call_server(node3(), :guess_question, ["username2", "a"])
 
       assert :ok = received(node2(), :cast, {:add_see, "username3", 0, "a", "a"})
     end
@@ -506,46 +506,46 @@ defmodule Server.WorkerTest do
     test "guess a question when other user is not online" do
       stub_guess()
 
-      assert :ok = remote_call(node3(), {:guess_question, "username1", "a"})
+      assert :ok = call_server(node3(), :guess_question, ["username1", "a"])
     end
 
     test "guess a question successfully" do
       stub_guess()
 
-      assert :ok = remote_call(node3(), {:guess_question, "username2", "a"})
+      assert :ok = call_server(node3(), :guess_question, ["username2", "a"])
     end
   end
 
   describe "get score" do
     test "try getting score but the client is not logged in" do
-      assert :unauthenticated = remote_call(node1(), {:get_score, "username2"})
+      assert :unauthenticated = call_server(node1(), :get_score, ["username2"])
     end
 
     test "try getting score but there's no such user" do
       UserMock |> expect(:exists?, fn _ -> false end)
 
-      assert :no_such_user = remote_call(node2(), {:get_score, "username1"})
+      assert :no_such_user = call_server(node2(), :get_score, ["username1"])
     end
 
     test "try getting score but there's no such game" do
       stub_get_score()
       GameMock |> expect(:exists?, fn _, _ -> false end)
 
-      assert :no_such_game = remote_call(node2(), {:get_score, "username1"})
+      assert :no_such_game = call_server(node2(), :get_score, ["username1"])
     end
 
     test "try getting score but get score query fails" do
       stub_get_score()
       GameMock |> expect(:get_score, fn _, _ -> :err end)
 
-      assert :db_error = remote_call(node2(), {:get_score, "username1"})
+      assert :db_error = call_server(node2(), :get_score, ["username1"])
     end
 
     test "try getting score but get s1 hits query fails" do
       stub_get_score()
       ScoreMock |> expect(:get_hits, fn _ -> :err end)
 
-      assert :db_error = remote_call(node2(), {:get_score, "username1"})
+      assert :db_error = call_server(node2(), :get_score, ["username1"])
     end
 
     test "try getting score but get s2 hits query fails" do
@@ -553,14 +553,14 @@ defmodule Server.WorkerTest do
       ScoreMock |> expect(:get_hits, fn _ -> {:ok, 0} end)
       ScoreMock |> expect(:get_hits, fn _ -> :err end)
 
-      assert :db_error = remote_call(node2(), {:get_score, "username1"})
+      assert :db_error = call_server(node2(), :get_score, ["username1"])
     end
 
     test "try getting score but get s1 misses query fails" do
       stub_get_score()
       ScoreMock |> expect(:get_misses, fn _ -> :err end)
 
-      assert :db_error = remote_call(node2(), {:get_score, "username1"})
+      assert :db_error = call_server(node2(), :get_score, ["username1"])
     end
 
     test "try getting score but get s2 misses query fails" do
@@ -568,13 +568,13 @@ defmodule Server.WorkerTest do
       ScoreMock |> expect(:get_misses, fn _ -> {:ok, 0} end)
       ScoreMock |> expect(:get_misses, fn _ -> :err end)
 
-      assert :db_error = remote_call(node2(), {:get_score, "username1"})
+      assert :db_error = call_server(node2(), :get_score, ["username1"])
     end
 
     test "getting score successfully" do
       stub_get_score()
 
-      assert {:ok, 25.0, 25.0} = remote_call(node2(), {:get_score, "username1"})
+      assert {:ok, 25.0, 25.0} = call_server(node2(), :get_score, ["username1"])
     end
 
     test "score is calculated correctly" do
@@ -590,7 +590,7 @@ defmodule Server.WorkerTest do
       expect(ScoreMock, :get_hits, 2, fn id -> if id == 1, do: {:ok, 1}, else: {:ok, 2} end)
       expect(ScoreMock, :get_misses, 2, fn id -> if id == 1, do: {:ok, 2}, else: {:ok, 1} end)
 
-      assert {:ok, 66.67, 33.33} = remote_call(node2(), {:get_score, "username1"})
+      assert {:ok, 66.67, 33.33} = call_server(node2(), :get_score, ["username1"])
     end
   end
 
@@ -673,6 +673,10 @@ defmodule Server.WorkerTest do
 
   defp remote_call(node, args) do
     :rpc.call(node, GenServer, :call, [{:global, :quiz_server}, args])
+  end
+
+  defp call_server(node, func, args) do
+    :rpc.call(node, Server.Worker, func, [server_pid()] ++ args)
   end
 
   defp server_pid, do: :global.whereis_name(:quiz_server)

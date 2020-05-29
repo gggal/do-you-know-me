@@ -55,24 +55,17 @@ defmodule Server.Worker do
     {:noreply, state}
   end
 
+  # __________API__________#
+
   @doc """
   Registers and logs in a new user. Possible responses are:
     :taken - if the name the user picked is already taken
-    :already_registered - if this client is already associated with amother user
+    :already_registered - if this client is already associated with another user
     :db_error - if the user cannot be registered due to internal db error
     :ok - if the user gets registered successfully
   """
-  def handle_call({:register, user, password}, {client_pid, _}, state) do
-    with :ok <- valid_register_input?(user, client_pid, password, state) do
-      if user_model().insert(user, password) do
-        Process.monitor({:quiz_client, node(client_pid)})
-        {:reply, :ok, State.add(state, user, node(client_pid))}
-      else
-        {:reply, :db_error, state}
-      end
-    else
-      {:err, reason} -> {:reply, reason, state}
-    end
+  def register(server, user, password) do
+    GenServer.call(server, {:register, user, password})
   end
 
   @doc """
@@ -81,15 +74,8 @@ defmodule Server.Worker do
     :wrong_credentials - if username/password is wrong
     :ok - upon success
   """
-  def handle_call({:login, user, password}, {client_pid, _}, state) do
-    with :ok <- valid_login_input?(user, password, client_pid, state) do
-      state = State.add(state, user, node(client_pid))
-      restore_client_state(user, state)
-      Process.monitor({:quiz_client, node(client_pid)})
-      {:reply, :ok, state}
-    else
-      {:err, reason} -> {:reply, reason, state}
-    end
+  def login(server, user, password) do
+    GenServer.call(server, {:login, user, password})
   end
 
   @doc """
@@ -98,16 +84,8 @@ defmodule Server.Worker do
     :db_error - if the user cannot be unregistered due to internal db error
     :ok - if the user has been unregistered successffully
   """
-  def handle_call({:unregister, password}, {client_pid, _}, state) do
-    with {:ok, name} <- get_valid_username(client_pid, state) do
-      cond do
-        not authenticated?(name, password) -> {:reply, :unauthenticated, state}
-        not user_model().delete(name) -> {:reply, :db_error, state}
-        true -> {:reply, :ok, State.delete(state, name)}
-      end
-    else
-      _ -> {:reply, :unauthenticated, state}
-    end
+  def unregister(server, password) do
+    GenServer.call(server, {:unregister, password})
   end
 
   @doc """
@@ -115,12 +93,8 @@ defmodule Server.Worker do
     :unauthenticated - if the client hadn't been logged in
     :{ok, list} - otherwise
   """
-  def handle_call(:list_users, {client_pid, _}, state) do
-    if logged_in?(client_pid, state) do
-      {:reply, {:ok, user_model().all()}, state}
-    else
-      {:reply, :unauthenticated, state}
-    end
+  def list_users(server) do
+    GenServer.call(server, :list_users)
   end
 
   @doc """
@@ -129,13 +103,8 @@ defmodule Server.Worker do
     :unauthenticated - if the client hadn't been logged in
     :{ok, list} - otherwise
   """
-
-  def handle_call(:list_related, {client_pid, _}, state) do
-    with {:ok, name} <- get_valid_username(client_pid, state) do
-      {:reply, {:ok, game_model().all_related(name)}, state}
-    else
-      _ -> {:reply, :unauthenticated, state}
-    end
+  def list_related(server) do
+    GenServer.call(server, :list_related)
   end
 
   @doc """
@@ -149,14 +118,8 @@ defmodule Server.Worker do
   who they're already playing with/invited
     :ok- invitation sent successfully
   """
-  def handle_call({:invite, to}, {client_pid, _}, state) do
-    with {:ok, from} <- get_valid_username(client_pid, state),
-         :ok <- valid_invite_input?(from, to) do
-      res = if invite_helper(from, to, state), do: :ok, else: :db_error
-      {:reply, res, state}
-    else
-      {:err, reason} -> {:reply, reason, state}
-    end
+  def invite(server, to) do
+    GenServer.call(server, {:invite, to})
   end
 
   @doc """
@@ -167,17 +130,8 @@ defmodule Server.Worker do
     :db_error - internal db error occurred
     :ok - the invitation was accepted successfully
   """
-  def handle_call({:accept, to}, {client_pid, _}, state) do
-    with {:ok, from} <- get_valid_username(client_pid, state),
-         :ok <- valid_accept_decline_input?(from, to) do
-      if start_game_helper(from, to, state) do
-        {:reply, :ok, state}
-      else
-        {:reply, :db_error, state}
-      end
-    else
-      {:err, reason} -> {:reply, reason, state}
-    end
+  def accept(server, to) do
+    GenServer.call(server, {:accept, to})
   end
 
   @doc """
@@ -188,14 +142,8 @@ defmodule Server.Worker do
     :db_error - internal db error occurred
     :ok - the invitation was declined successfully
   """
-  def handle_call({:decline, to}, {client_pid, _}, state) do
-    with {:ok, from} <- get_valid_username(client_pid, state),
-         :ok <- valid_accept_decline_input?(from, to) do
-      res = if invitation_model().delete(to, from), do: :ok, else: :db_error
-      {:reply, res, state}
-    else
-      {:err, reason} -> {:reply, reason, state}
-    end
+  def decline(server, to) do
+    GenServer.call(server, {:decline, to})
   end
 
   @doc """
@@ -209,13 +157,8 @@ defmodule Server.Worker do
     :invalid_response - `answer`'s format is incorrect
     :ok - the question was answered successfully
   """
-  def handle_call({:answer_question, from, answer}, {client_pid, _}, state) do
-    with {:ok, user} <- get_valid_username(client_pid, state),
-         :ok <- valid_answer_guess_input?(from, user, answer) do
-      {:reply, answer_question_helper(from, user, answer, state), state}
-    else
-      {:err, reason} -> {:reply, reason, state}
-    end
+  def answer_question(server, from, answer) do
+    GenServer.call(server, {:answer_question, from, answer})
   end
 
   @doc """
@@ -228,13 +171,8 @@ defmodule Server.Worker do
     :invalid_response - `guess`'s format is incorrect
     :ok - the answer was guessed successfully
   """
-  def handle_call({:guess_question, from, guess}, {client_pid, _}, state) do
-    with {:ok, user} <- get_valid_username(client_pid, state),
-         :ok <- valid_answer_guess_input?(from, user, guess) do
-      {:reply, guess_question_helper(from, user, guess, state), state}
-    else
-      {:err, reason} -> {:reply, reason, state}
-    end
+  def guess_question(server, from, guess) do
+    GenServer.call(server, {:guess_question, from, guess})
   end
 
   @doc """
@@ -246,6 +184,115 @@ defmodule Server.Worker do
     :db_error - internal db error occurred
     {:ok. score1, score2} - score1 is the user's score and score2 is `other`'s score
   """
+  def get_score(server, other) do
+    GenServer.call(server, {:get_score, other})
+  end
+
+  # __________Callbacks__________#
+
+  def handle_call({:register, user, password}, {client_pid, _}, state) do
+    with :ok <- valid_register_input?(user, client_pid, password, state) do
+      if user_model().insert(user, password) do
+        Process.monitor({:quiz_client, node(client_pid)})
+        {:reply, :ok, State.add(state, user, node(client_pid))}
+      else
+        {:reply, :db_error, state}
+      end
+    else
+      {:err, reason} -> {:reply, reason, state}
+    end
+  end
+
+  def handle_call({:login, user, password}, {client_pid, _}, state) do
+    with :ok <- valid_login_input?(user, password, client_pid, state) do
+      state = State.add(state, user, node(client_pid))
+      restore_client_state(user, state)
+      Process.monitor({:quiz_client, node(client_pid)})
+      {:reply, :ok, state}
+    else
+      {:err, reason} -> {:reply, reason, state}
+    end
+  end
+
+  def handle_call({:unregister, password}, {client_pid, _}, state) do
+    with {:ok, name} <- get_valid_username(client_pid, state) do
+      cond do
+        not authenticated?(name, password) -> {:reply, :unauthenticated, state}
+        not user_model().delete(name) -> {:reply, :db_error, state}
+        true -> {:reply, :ok, State.delete(state, name)}
+      end
+    else
+      _ -> {:reply, :unauthenticated, state}
+    end
+  end
+
+  def handle_call(:list_users, {client_pid, _}, state) do
+    if logged_in?(client_pid, state) do
+      {:reply, {:ok, user_model().all()}, state}
+    else
+      {:reply, :unauthenticated, state}
+    end
+  end
+
+  def handle_call(:list_related, {client_pid, _}, state) do
+    with {:ok, name} <- get_valid_username(client_pid, state) do
+      {:reply, {:ok, game_model().all_related(name)}, state}
+    else
+      _ -> {:reply, :unauthenticated, state}
+    end
+  end
+
+  def handle_call({:invite, to}, {client_pid, _}, state) do
+    with {:ok, from} <- get_valid_username(client_pid, state),
+         :ok <- valid_invite_input?(from, to) do
+      res = if invite_helper(from, to, state), do: :ok, else: :db_error
+      {:reply, res, state}
+    else
+      {:err, reason} -> {:reply, reason, state}
+    end
+  end
+
+  def handle_call({:accept, to}, {client_pid, _}, state) do
+    with {:ok, from} <- get_valid_username(client_pid, state),
+         :ok <- valid_accept_decline_input?(from, to) do
+      if start_game_helper(from, to, state) do
+        {:reply, :ok, state}
+      else
+        {:reply, :db_error, state}
+      end
+    else
+      {:err, reason} -> {:reply, reason, state}
+    end
+  end
+
+  def handle_call({:decline, to}, {client_pid, _}, state) do
+    with {:ok, from} <- get_valid_username(client_pid, state),
+         :ok <- valid_accept_decline_input?(from, to) do
+      res = if invitation_model().delete(to, from), do: :ok, else: :db_error
+      {:reply, res, state}
+    else
+      {:err, reason} -> {:reply, reason, state}
+    end
+  end
+
+  def handle_call({:answer_question, from, answer}, {client_pid, _}, state) do
+    with {:ok, user} <- get_valid_username(client_pid, state),
+         :ok <- valid_answer_guess_input?(from, user, answer) do
+      {:reply, answer_question_helper(from, user, answer, state), state}
+    else
+      {:err, reason} -> {:reply, reason, state}
+    end
+  end
+
+  def handle_call({:guess_question, from, guess}, {client_pid, _}, state) do
+    with {:ok, user} <- get_valid_username(client_pid, state),
+         :ok <- valid_answer_guess_input?(from, user, guess) do
+      {:reply, guess_question_helper(from, user, guess, state), state}
+    else
+      {:err, reason} -> {:reply, reason, state}
+    end
+  end
+
   def handle_call({:get_score, other}, {client_pid, _}, state) do
     with {:ok, user} <- get_valid_username(client_pid, state),
          :ok <- valid_score_input?(other, user),
@@ -259,7 +306,7 @@ defmodule Server.Worker do
 
   def questions_count(), do: @questions_count
 
-  # PRIVATE #
+  #__________Private functions__________#
 
   defp get_score_percentage(user, other) do
     with {:ok, score_id} <- game_model().get_score({user, other}, user),
