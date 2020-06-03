@@ -22,7 +22,7 @@ defmodule Server.MixProject do
   end
 
   # Specify which paths to compile per environment.
-  defp elixirc_paths(:test), do: ["lib", "test/server"]
+  defp elixirc_paths(:test), do: ["lib", "test/server", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
 
   # Run "mix help deps" to learn about dependencies.
@@ -31,7 +31,8 @@ defmodule Server.MixProject do
       {:logger_file_backend, "~> 0.0.11", runtime: false},
       {:mox, "~> 0.5.0", only: :test},
       {:ecto_sql, "~> 3.3.4"},
-      {:postgrex, ">= 0.10.0"}
+      {:postgrex, ">= 0.10.0"},
+      {:poison, "~> 3.1"}
     ]
   end
 

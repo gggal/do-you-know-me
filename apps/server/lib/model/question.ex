@@ -1,7 +1,7 @@
 defmodule Question do
   @callback get_question_number(integer()) :: :err | {:ok, integer()}
-  @callback get_question_answer(integer()) :: :err | {:ok, atom()}
-  @callback get_question_guess(integer()) :: :err | {:ok, atom()}
+  @callback get_question_answer(integer()) :: :err | {:ok, String.t()}
+  @callback get_question_guess(integer()) :: :err | {:ok, String.t()}
   @callback set_question_number(integer(), integer()) :: boolean()
   @callback set_question_answer(integer(), String.t()) :: boolean()
   @callback set_question_guess(integer(), String.t()) :: boolean()

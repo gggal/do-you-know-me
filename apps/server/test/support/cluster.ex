@@ -16,7 +16,7 @@ defmodule Server.Cluster do
   defp spawn_node(node_host) do
     {:ok, node} = :slave.start(to_charlist("127.0.0.1"), node_host, inet_loader_args())
     :ok = add_code_paths(node)
-    ensure_dummy_client_started(node)
+    ensure_client_started(node)
     {:ok, node}
   end
 
@@ -37,5 +37,12 @@ defmodule Server.Cluster do
     rpc(node, Mix, :env, [Mix.env()])
 
     {:ok, _pid} = rpc(node, Server.TestClient, :start_link, [])
+  end
+
+  defp ensure_client_started(node) do
+    rpc(node, Application, :ensure_all_started, [:mix])
+    rpc(node, Mix, :env, [Mix.env()])
+
+    {:ok, _pid} = rpc(node, Client.Worker, :start_link, [])
   end
 end

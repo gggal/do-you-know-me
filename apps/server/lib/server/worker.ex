@@ -1,4 +1,6 @@
 defmodule Server.Worker do
+  @behaviour Server.Behaviour
+
   use GenServer
 
   require Logger
@@ -12,6 +14,8 @@ defmodule Server.Worker do
   def invitation_model, do: Application.get_env(:server, :invitation)
   def score_model, do: Application.get_env(:server, :score)
 
+  def client_module, do: Application.get_env(:server, :client)
+
   @questions_count 100
 
   @moduledoc """
@@ -20,40 +24,9 @@ defmodule Server.Worker do
   is to play. This data is being persisted in a database.
 
   The server's inner state consists of users and clients - clients are the nodes
-  from which users can log in. A user can be logged from mulitple clients at a time,
+  from which users can log in. A user can be logged-in from mulitple clients at a time,
   but a client can only have one user associated with it.
   """
-
-  @doc """
-  Starts the server process.
-  """
-  def start_link() do
-    GenServer.start_link(__MODULE__, State.new(), name: {:global, :quiz_server})
-  end
-
-  @doc """
-  Initializes the server.
-  """
-  def init(args) do
-    {:ok, args}
-  end
-
-  @doc """
-  Called in case a client has disconnected. If the client is the user's last client,
-  the user gets removed from the online users list.
-  """
-  def handle_info({:DOWN, _ref, :process, {_, node}, _}, state) do
-    if State.contains_client?(state, node) do
-      {:noreply, State.delete_client(state, node)}
-    else
-      Logger.error("Monitored client #{node} is not in the online users list.")
-      {:noreply, state}
-    end
-  end
-
-  def handle_info(_, state) do
-    {:noreply, state}
-  end
 
   # __________API__________#
 
@@ -64,8 +37,9 @@ defmodule Server.Worker do
     :db_error - if the user cannot be registered due to internal db error
     :ok - if the user gets registered successfully
   """
-  def register(server, user, password) do
-    GenServer.call(server, {:register, user, password})
+  @impl Server.Behaviour
+  def register(user, password) do
+    GenServer.call(self_pid(), {:register, user, password})
   end
 
   @doc """
@@ -74,8 +48,9 @@ defmodule Server.Worker do
     :wrong_credentials - if username/password is wrong
     :ok - upon success
   """
-  def login(server, user, password) do
-    GenServer.call(server, {:login, user, password})
+  @impl Server.Behaviour
+  def login(user, password) do
+    GenServer.call(self_pid(), {:login, user, password})
   end
 
   @doc """
@@ -84,8 +59,9 @@ defmodule Server.Worker do
     :db_error - if the user cannot be unregistered due to internal db error
     :ok - if the user has been unregistered successffully
   """
-  def unregister(server, password) do
-    GenServer.call(server, {:unregister, password})
+  @impl Server.Behaviour
+  def unregister(password) do
+    GenServer.call(self_pid(), {:unregister, password})
   end
 
   @doc """
@@ -93,8 +69,9 @@ defmodule Server.Worker do
     :unauthenticated - if the client hadn't been logged in
     :{ok, list} - otherwise
   """
-  def list_users(server) do
-    GenServer.call(server, :list_users)
+  @impl Server.Behaviour
+  def list_users() do
+    GenServer.call(self_pid(), :list_users)
   end
 
   @doc """
@@ -103,8 +80,9 @@ defmodule Server.Worker do
     :unauthenticated - if the client hadn't been logged in
     :{ok, list} - otherwise
   """
-  def list_related(server) do
-    GenServer.call(server, :list_related)
+  @impl Server.Behaviour
+  def list_related() do
+    GenServer.call(self_pid(), :list_related)
   end
 
   @doc """
@@ -118,8 +96,9 @@ defmodule Server.Worker do
   who they're already playing with/invited
     :ok- invitation sent successfully
   """
-  def invite(server, to) do
-    GenServer.call(server, {:invite, to})
+  @impl Server.Behaviour
+  def invite(to) do
+    GenServer.call(self_pid(), {:invite, to})
   end
 
   @doc """
@@ -130,8 +109,9 @@ defmodule Server.Worker do
     :db_error - internal db error occurred
     :ok - the invitation was accepted successfully
   """
-  def accept(server, to) do
-    GenServer.call(server, {:accept, to})
+  @impl Server.Behaviour
+  def accept(to) do
+    GenServer.call(self_pid(), {:accept, to})
   end
 
   @doc """
@@ -142,8 +122,9 @@ defmodule Server.Worker do
     :db_error - internal db error occurred
     :ok - the invitation was declined successfully
   """
-  def decline(server, to) do
-    GenServer.call(server, {:decline, to})
+  @impl Server.Behaviour
+  def decline(to) do
+    GenServer.call(self_pid(), {:decline, to})
   end
 
   @doc """
@@ -157,8 +138,9 @@ defmodule Server.Worker do
     :invalid_response - `answer`'s format is incorrect
     :ok - the question was answered successfully
   """
-  def answer_question(server, from, answer) do
-    GenServer.call(server, {:answer_question, from, answer})
+  @impl Server.Behaviour
+  def answer_question(from, answer) do
+    GenServer.call(self_pid(), {:answer_question, from, answer})
   end
 
   @doc """
@@ -171,8 +153,9 @@ defmodule Server.Worker do
     :invalid_response - `guess`'s format is incorrect
     :ok - the answer was guessed successfully
   """
-  def guess_question(server, from, guess) do
-    GenServer.call(server, {:guess_question, from, guess})
+  @impl Server.Behaviour
+  def guess_question(from, guess) do
+    GenServer.call(self_pid(), {:guess_question, from, guess})
   end
 
   @doc """
@@ -184,12 +167,47 @@ defmodule Server.Worker do
     :db_error - internal db error occurred
     {:ok. score1, score2} - score1 is the user's score and score2 is `other`'s score
   """
-  def get_score(server, other) do
-    GenServer.call(server, {:get_score, other})
+  @impl Server.Behaviour
+  def get_score(other) do
+    GenServer.call(self_pid(), {:get_score, other})
   end
 
   # __________Callbacks__________#
 
+  @doc """
+  Starts the server process.
+  """
+  def start_link() do
+    GenServer.start_link(__MODULE__, State.new(), name: {:global, :quiz_server})
+  end
+
+  @doc """
+  Initializes the server.
+  """
+  @impl true
+  def init(args) do
+    {:ok, args}
+  end
+
+  @doc """
+  Called in case a client has disconnected. If the client is the user's last client,
+  the user gets removed from the online users list.
+  """
+  @impl true
+  def handle_info({:DOWN, _ref, :process, {_, node}, _}, state) do
+    if State.contains_client?(state, node) do
+      {:noreply, State.delete_client(state, node)}
+    else
+      Logger.error("Monitored client #{node} is not in the online users list.")
+      {:noreply, state}
+    end
+  end
+
+  def handle_info(_, state) do
+    {:noreply, state}
+  end
+
+  @impl true
   def handle_call({:register, user, password}, {client_pid, _}, state) do
     with :ok <- valid_register_input?(user, client_pid, password, state) do
       if user_model().insert(user, password) do
@@ -306,7 +324,7 @@ defmodule Server.Worker do
 
   def questions_count(), do: @questions_count
 
-  #__________Private functions__________#
+  # __________Private functions__________#
 
   defp get_score_percentage(user, other) do
     with {:ok, score_id} <- game_model().get_score({user, other}, user),
@@ -323,7 +341,7 @@ defmodule Server.Worker do
          {:ok, answer} <- get_q_answer({from, to}, from),
          true <- game_model().guess_question({from, to}, from, guess),
          {:ok, guess} <- get_q_guess({from, to}, from) do
-      send_user(from, state, {:add_see, to, old_question, answer, guess})
+      send_user(from, state, :cast_to_see, [to, old_question, answer, guess])
 
       :ok
     else
@@ -335,7 +353,7 @@ defmodule Server.Worker do
     if invitation_model().exists?(to, from) do
       start_game_helper(from, to, state)
     else
-      send_user(to, state, {:add_invitation, from})
+      send_user(to, state, :cast_invitation, [from])
       invitation_model().insert(from, to)
     end
   end
@@ -344,8 +362,8 @@ defmodule Server.Worker do
     if game_model().start(from, to) do
       {:ok, q1} = get_q_number({from, to}, from)
       {:ok, q2} = get_q_number({from, to}, to)
-      send_user(from, state, {:add_question, to, q1})
-      send_user(to, state, {:add_question, from, q2})
+      send_user(from, state, :cast_to_answer, [to, q1])
+      send_user(to, state, :cast_to_answer, [from, q2])
       true
     else
       false
@@ -356,8 +374,8 @@ defmodule Server.Worker do
     with {:ok, old_question} <- get_q_number({from, to}, from),
          true <- game_model().answer_question({from, to}, from, answer),
          {:ok, new_question} <- get_q_number({from, to}, from) do
-      send_user(to, state, {:add_question, from, new_question})
-      send_user(from, state, {:add_guess, to, old_question, answer})
+      send_user(to, state, :cast_to_answer, [from, new_question])
+      send_user(from, state, :cast_to_guess, [to, old_question, answer])
 
       :ok
     else
@@ -367,7 +385,7 @@ defmodule Server.Worker do
 
   defp restore_client_state(user, state) do
     for other <- invitation_model().get_all_for(user) |> elem(1) do
-      send_user(user, state, {:add_invitation, other})
+      send_user(user, state, :cast_invitation, [other])
     end
 
     for other <- game_model().all_related(user) do
@@ -380,15 +398,15 @@ defmodule Server.Worker do
            {:ok, q2_answer} <- question_model().get_question_answer(q2),
            {:ok, q2_guess} <- question_model().get_question_guess(q2) do
         if is_nil(q1_answer) do
-          send_user(user, state, {:add_question, other, q1_num})
+          send_user(user, state, :cast_to_answer, [other, q1_num])
         end
 
         if not is_nil(q2_answer) and is_nil(q2_guess) do
-          send_user(user, state, {:add_guess, other, q2_num, q2_answer})
+          send_user(user, state, :cast_to_guess, [other, q2_num, q2_answer])
         end
 
         if not is_nil(q1_answer) and not is_nil(q1_guess) do
-          send_user(user, state, {:add_see, other, q1_num, q1_answer, q1_guess})
+          send_user(user, state, :cast_to_see, [other, q1_num, q1_answer, q1_guess])
         end
       end
     end
@@ -488,7 +506,11 @@ defmodule Server.Worker do
   end
 
   defp authenticated?(user, password) do
-    user_model().get_password(user) == password
+    with {:ok, db_pass} <- user_model().get_password(user) do
+      db_pass == password
+    else
+      nil -> false
+    end
   end
 
   defp logged_in?(client_pid, state) do
@@ -505,9 +527,12 @@ defmodule Server.Worker do
     end
   end
 
-  defp send_user(user, state, msg) do
+  defp send_user(user, state, function, arguments) do
     for client <- State.get_clients(state, user) do
-      GenServer.cast({:quiz_client, client}, msg)
+      apply(client_module(), function, [client] ++ arguments)
     end
   end
+
+  # the pid of this genserver
+  defp self_pid, do: :global.whereis_name(:quiz_server)
 end

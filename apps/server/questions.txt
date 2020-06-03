@@ -1,100 +1,100 @@
-{"If you didn’t have to sleep, what would you do with the extra time?","Learning", "Gaming", "Partying"}
-{"What hobby would you get into if time and money weren’t an issue?", "traveling", "Safari", "Tennis"}
-{"How often do you play sports?","Often", "Sometimes", "Never"}
-{"What fictional place would you most like to go?", "Hogwarts", "Narnia", "Prefer to stay in real life"}
-{"What job would you be terrible at?", "Waiter/Waitress", "Engineer", "Dancer"}
-{"If you could turn any activity into an Olympic sport, what would you have a good chance at winning medal for?", "Playing computer games", "Eating", "A sport that is already olympic"} 
-{"What is the most annoying habit that other people have?", "Smoking.", "Chewing food with their mouth open.", "Slow walking."}
-{"What job do you think you’d be really good at?", "A teacher", "A travel vlogger", "An engineer"}
-{"What skill would you like to master?", "Cooking", "Singing", "Leadership"}
-{"What drink do you prefer?", "Beer", "A fancy cocktail", "Water"} 
-{"Are you usually early or late?", "Early", "Late", "Always on time"}
-{"How many pets did you have while you were growing up?", "More than one.", "Just one.", "I didn't have any."}
-{"When people come to you for help, what do they usually want help with?", "Their private life", "Work", "Something else"}
-{"What takes up too much of your time?", "Work", "Procrastinating", "Girlfriend/Boyfriend/Wife/Husband"}
-{"Who’s your go to music genre when you can’t decide on something to listen to?", "Rock", "Dance", "Hip-Hop"}
-{"Are you into comedy shows?", "Yes, love them!", "Not really.", "Don't mind them."}
-{"Who has impressed you most with what they’ve accomplished?", "Steve Jobs", "Elbert Einstein", "Martin Luther King"}
-{"What age do you wish you could permanently be?", "10", "20", "30"}
-{"What TV show or movie do you refuse to watch?", "Emergency room", "Gossip Girl", "The Big Bang Theory"}
-{"What would be your ideal way to spend the weekend?", "Netflix and chill", "Hiking in the mountains", "Partying"}
-{"What’s something you like to do the old-fashioned way?", "Dress", "Send greeting cards", "Make a photo album"}
-{"What’s your favorite genre of book or movie?", "Action", "Comedy", "Drama"}
-{"What’s the best single day on the calendar?", "My birthday", "New years eve", "Every day"}
-{"How do you relax after a hard day of work?", "Watching a show/movie", "Going for a walk", "Being with family/friends"}
-{"What’s the farthest you’ve ever been from home?", "On the another side of the world.", "In a foreign country.", "In another city/town."}
-{"What is the cutest thing you’ve ever seen?", "A baby.", "A kitten or a puppy", "Myself"}
-{"What could you give a 40-minute presentation on with absolutely no preparation?", "A sport of some sort.", "My work field.", "A favourite series or movie."}
-{"What is something you think everyone should do at least once in their lives?", "Bungee jumping.", "Ski diving.", "Scuba diving."}
-{"Would you rather go hang gliding or whitewater rafting?", "Hang gliding.", "Whitewater rafting.", "Neighter."}
-{"What is something that a ton of people are obsessed with but you just don’t get the point of?", "Sports.", "Lives of celebrities.", "I don't mind."}
-{"What are you most looking forward to in the next 10 years?", "Creating a family.", "Building my career.", "Traveling around the globe."}
-{"What piece of entertainment do you wish you could erase from your mind so that you could experience for the first time again?", "A computer game.", "A tv show/series/movie.", "A Disneyland trip."}
-{"If all jobs had the same pay and hours, what job would you like to have?", "The one I have now.", "Something in the entertainment industry.", "Other."}
-{"What kind of art do you enjoy most?", "Music.", "Cinematography.", "Literature."}
-{"What do you hope never changes in your life?", "My friends.", "My girlfriend/boyfriend.", "Myself."}
-{"What city would you most like to live in?", "New York.", "Tokyo.", "Sidney."}
-{"What TV show title best describes your life?", "Married with children.", "Friends.", "The office."}
-{"What’s the best way a person can spend their time?", "With loved ones.", "Relaxing.", "Exploring."}
-{"Where is the most relaxing place you’ve ever been?", "At home.", "In the wild.", "Elsewhere."}
-{"What website do you visit most often?", "www.youtube.com", "www.facebook.com", "www.google.com"}
-{"Where do you usually go when you have time off?", "To the cinema.", "On a walk.", "Staying at home."}
-{"What are you most likely to become famous for?", "My artistic skills.", "My sharp brain.", "My fun side."}
-{"What question would you most like to know the answer to?", "The meaning of life.", "Where all my lost socks went.", "I don't want to know anything."} 
-{"What question can you ask to find out the most about a person?", "What's their occupation.", "What's their favourite book.", "What are their friend like."}
-{"When was the last time you changed your opinion / belief about something major?", "A long time ago.", "I change my opinions often.", "I don't remember."}
-{"What are people always complimenting you about?", "My looks.", "My intellect.", "My skills at something."}
-{"In what situation or place would you feel the most out of place in?", "In a library.", "At a festival.", "In a night club."}
-{"They say that everyone has a book in them. What would your book genre be?", "Thriller.", "Adventure.", "Drama."}
-{"What do you spend the most time thinking about?", "The future.", "The past.", "The present."}
-{"What do you wish your brain was better at doing?", "Concentrating.", "Forgetting.", "Maths."}
-{"There are two types of people in this world. What are the two types?", "Interesting/Boring.", "Good/Bad.", "Smart/Stupid."}
-{"What is something you are certain you’ll never experience?", "There's no such thing.", "Falling in love.", "Being the richest person in the world."}
-{"As you get older, what are you becoming more and more afraid of?", "Nothing.", "Spiders.", "Death."}
-{"What is one of your favorite smells?", "Freshly cut grass.", "Bacon.", "Coffee."}
-{"If you had to change your name, what would you change it to?", "Wouldn't think twice.", "Not a chance.", "I'm not sure."}
-{"Do you give money to any charities?", "Yes, I do regularly.", "Not really.", "I sometimes do."}
-{"What is something that your friends would consider “so you”?", "Being goofy.", "Eating ALOT.", "Being the quite one."}
-{"What personality trait do you dislike the most?", "Inconsistency.", "Laziness.", "Taking life too seriously."}
-{"What irrational fear do you have?", "Long underground tunnels.", "Flushing airplane toilets.", "Closed shower curtains."}
-{"What would you do with two million dollars?", "Donate them to charity.", "Invest them in stocks.", "Build a mansion."}
-{"What would be your spirit animal?", "A dolphine.", "A cat.", "A dog."}
-{"What animal would be cutest if scaled down to the size of a kitten?", "An elephant.", "A polar bear.", "A crocodile."}
-{"What movie can you watch over and over without ever getting tired of?", "The notebook.", "Terminator 1.", "Lion King."}
-{"Are you a spicy food lover?", "Yes, definitely!", "No, I hate it.", "I don't mind it."}
-{"What would a world populated by clones of you be like?", "A utopia.", "Everyone would be dead.", "Same as it is now, I guess."}
-{"What invention doesn’t get a lot of love, but has greatly improved the world?", "Vaccines.", "The death penalty.", "Mathematics."} 
-{"Do you think that aliens exist?", "Yes.", "No.", "I don't know."}
-{"If you were given a PhD degree, but had no more knowledge of the subject of the degree besides what you have now, what degree would you want to be given to you?", "Management.", "Economics.", "Psychology."}
-{"If magic was real, what spell would you try to learn first?", "Being invisible.", "Flying.", "Controlling time."}
-{"Do you eat food that’s past its expiration date if it still smells and looks fine?", "Yes.", "No way.", "Depends on the food."}
-{"Which social media platform do you use the most?", "Facebook.", "Twitter.", "Instagram."}
-{"How many languages do you speak?", "Only one.", "Two - three.", "More than three."}
-{"Do you like things to be carefully planned or do you prefer to just go with the flow?", "I plan everything out.", "I'm spontaneous.", "It depends."}
-{"What’s your best example of easy come, easy go?", "Money.", "People.", "Fame."}
-{"Which way should toilet paper hang, over or under?", "Over!", "Under!", "I don't care."}
-{"What potato chip flavor do you prefer?", "Salt.", "Chicken.", "Cheese."}
-{"How much do you think names affect the outcomes of people’s lives?", "Not at all.", "A lot.", "Yes, if they are strange or unusual."} 
-{"Where would you go on vacation?", "Rome.", "DisneyWorld.", "Hawaii."}
-{"Do you prefer working with others or alone?", "With others.", "Alone.", "Doesn't matter to me."}
-{"Did you get good grades in school?", "Yes, always.", "Not really.", "I was more like an average student."}
-{"Maths or English?", "Maths.", "English.", "Neither."}
-{"Do you like to take risks?", "Yes.", "No.", "Sometimes."}
-{"Are you a rule breaker?", "No.", "Yes.", "Sometimes."}
-{"Do you find sticking to a schedule to be boring?", "Yes.", "No.", "It depends."}
-{"Are you more shy or outgoing?", "Shy.", "Outgoing.", "A bit of both."}
-{"Do politics interest you?", "Not at all.", "Yes, a lot.", "Kind of."}
-{"What's your prefered season for traveling?", "Winter.", "Summer.", "Spring/Fall."}
-{"You're traveling first class. Which dish do you order from the menu?", "Steak.", "Sushi.", "Pasta with truffles."}
-{"What's your favourite potato dish?", "French fries.", "Mashed potatoes.", "Baked potatoes."}
-{"If you had to pick a food to never eat again, which one would it be?", "Chocolate.", "Pasta.", "Pizza."}
-{"Do you have any tattoos?", "I have many tattoos.", "I have one/two small ones.", "I don't have tattoos."}
-{"Do you like horror movies?", "Love them!", "Hate them!", "I don't mind them."}
-{"Which of these colors do you like the most?", "Red.", "Blue.", "Yellow."}
-{"Who is your favourite F.R.I.E.N.D.S woman character?", "Phoebe", "Monica", "Rachel"}
-{"Who is your favourite F.R.I.E.N.D.S man character?", "Ross", "Joey", "Chandler"}
-{"What is your favourite type of meat?", "Chicken", "Pork", "Other"}
-{"What of these fruits do you like the most?", "Strawberries", "Oranges", "Apples"}
-{"Are you a morning person or a night person?", "Night owl.", "Early bird.", "Both."}
-{"How many siblings do you have?", "None.", "One or two.", "More than two."}
-{"Are you religious?", "Yes.", "I'm an atheist.", "I'm an agnostic."}
+["If you didn’t have to sleep, what would you do with the extra time?","Learning", "Gaming", "Partying"]
+["What hobby would you get into if time and money weren’t an issue?", "traveling", "Safari", "Tennis"]
+["How often do you play sports?","Often", "Sometimes", "Never"]
+["What fictional place would you most like to go?", "Hogwarts", "Narnia", "Prefer to stay in real life"]
+["What job would you be terrible at?", "Waiter/Waitress", "Engineer", "Dancer"]
+["If you could turn any activity into an Olympic sport, what would you have a good chance at winning medal for?", "Playing computer games", "Eating", "A sport that is already olympic"] 
+["What is the most annoying habit that other people have?", "Smoking.", "Chewing food with their mouth open.", "Slow walking."]
+["What job do you think you’d be really good at?", "A teacher", "A travel vlogger", "An engineer"]
+["What skill would you like to master?", "Cooking", "Singing", "Leadership"]
+["What drink do you prefer?", "Beer", "A fancy cocktail", "Water"] 
+["Are you usually early or late?", "Early", "Late", "Always on time"]
+["How many pets did you have while you were growing up?", "More than one.", "Just one.", "I didn't have any."]
+["When people come to you for help, what do they usually want help with?", "Their private life", "Work", "Something else"]
+["What takes up too much of your time?", "Work", "Procrastinating", "Girlfriend/Boyfriend/Wife/Husband"]
+["Who’s your go to music genre when you can’t decide on something to listen to?", "Rock", "Dance", "Hip-Hop"]
+["Are you into comedy shows?", "Yes, love them!", "Not really.", "Don't mind them."]
+["Who has impressed you most with what they’ve accomplished?", "Steve Jobs", "Elbert Einstein", "Martin Luther King"]
+["What age do you wish you could permanently be?", "10", "20", "30"]
+["What TV show or movie do you refuse to watch?", "Emergency room", "Gossip Girl", "The Big Bang Theory"]
+["What would be your ideal way to spend the weekend?", "Netflix and chill", "Hiking in the mountains", "Partying"]
+["What’s something you like to do the old-fashioned way?", "Dress", "Send greeting cards", "Make a photo album"]
+["What’s your favorite genre of book or movie?", "Action", "Comedy", "Drama"]
+["What’s the best single day on the calendar?", "My birthday", "New years eve", "Every day"]
+["How do you relax after a hard day of work?", "Watching a show/movie", "Going for a walk", "Being with family/friends"]
+["What’s the farthest you’ve ever been from home?", "On the another side of the world.", "In a foreign country.", "In another city/town."]
+["What is the cutest thing you’ve ever seen?", "A baby.", "A kitten or a puppy", "Myself"]
+["What could you give a 40-minute presentation on with absolutely no preparation?", "A sport of some sort.", "My work field.", "A favourite series or movie."]
+["What is something you think everyone should do at least once in their lives?", "Bungee jumping.", "Ski diving.", "Scuba diving."]
+["Would you rather go hang gliding or whitewater rafting?", "Hang gliding.", "Whitewater rafting.", "Neighter."]
+["What is something that a ton of people are obsessed with but you just don’t get the point of?", "Sports.", "Lives of celebrities.", "I don't mind."]
+["What are you most looking forward to in the next 10 years?", "Creating a family.", "Building my career.", "Traveling around the globe."]
+["What piece of entertainment do you wish you could erase from your mind so that you could experience for the first time again?", "A computer game.", "A tv show/series/movie.", "A Disneyland trip."]
+["If all jobs had the same pay and hours, what job would you like to have?", "The one I have now.", "Something in the entertainment industry.", "Other."]
+["What kind of art do you enjoy most?", "Music.", "Cinematography.", "Literature."]
+["What do you hope never changes in your life?", "My friends.", "My girlfriend/boyfriend.", "Myself."]
+["What city would you most like to live in?", "New York.", "Tokyo.", "Sidney."]
+["What TV show title best describes your life?", "Married with children.", "Friends.", "The office."]
+["What’s the best way a person can spend their time?", "With loved ones.", "Relaxing.", "Exploring."]
+["Where is the most relaxing place you’ve ever been?", "At home.", "In the wild.", "Elsewhere."]
+["What website do you visit most often?", "www.youtube.com", "www.facebook.com", "www.google.com"]
+["Where do you usually go when you have time off?", "To the cinema.", "On a walk.", "Staying at home."]
+["What are you most likely to become famous for?", "My artistic skills.", "My sharp brain.", "My fun side."]
+["What question would you most like to know the answer to?", "The meaning of life.", "Where all my lost socks went.", "I don't want to know anything."] 
+["What question can you ask to find out the most about a person?", "What's their occupation.", "What's their favourite book.", "What are their friend like."]
+["When was the last time you changed your opinion / belief about something major?", "A long time ago.", "I change my opinions often.", "I don't remember."]
+["What are people always complimenting you about?", "My looks.", "My intellect.", "My skills at something."]
+["In what situation or place would you feel the most out of place in?", "In a library.", "At a festival.", "In a night club."]
+["They say that everyone has a book in them. What would your book genre be?", "Thriller.", "Adventure.", "Drama."]
+["What do you spend the most time thinking about?", "The future.", "The past.", "The present."]
+["What do you wish your brain was better at doing?", "Concentrating.", "Forgetting.", "Maths."]
+["There are two types of people in this world. What are the two types?", "Interesting/Boring.", "Good/Bad.", "Smart/Stupid."]
+["What is something you are certain you’ll never experience?", "There's no such thing.", "Falling in love.", "Being the richest person in the world."]
+["As you get older, what are you becoming more and more afraid of?", "Nothing.", "Spiders.", "Death."]
+["What is one of your favorite smells?", "Freshly cut grass.", "Bacon.", "Coffee."]
+["If you had to change your name, what would you change it to?", "Wouldn't think twice.", "Not a chance.", "I'm not sure."]
+["Do you give money to any charities?", "Yes, I do regularly.", "Not really.", "I sometimes do."]
+["What is something that your friends would consider “so you”?", "Being goofy.", "Eating ALOT.", "Being the quite one."]
+["What personality trait do you dislike the most?", "Inconsistency.", "Laziness.", "Taking life too seriously."]
+["What irrational fear do you have?", "Long underground tunnels.", "Flushing airplane toilets.", "Closed shower curtains."]
+["What would you do with two million dollars?", "Donate them to charity.", "Invest them in stocks.", "Build a mansion."]
+["What would be your spirit animal?", "A dolphine.", "A cat.", "A dog."]
+["What animal would be cutest if scaled down to the size of a kitten?", "An elephant.", "A polar bear.", "A crocodile."]
+["What movie can you watch over and over without ever getting tired of?", "The notebook.", "Terminator 1.", "Lion King."]
+["Are you a spicy food lover?", "Yes, definitely!", "No, I hate it.", "I don't mind it."]
+["What would a world populated by clones of you be like?", "A utopia.", "Everyone would be dead.", "Same as it is now, I guess."]
+["What invention doesn’t get a lot of love, but has greatly improved the world?", "Vaccines.", "The death penalty.", "Mathematics."] 
+["Do you think that aliens exist?", "Yes.", "No.", "I don't know."]
+["If you were given a PhD degree, but had no more knowledge of the subject of the degree besides what you have now, what degree would you want to be given to you?", "Management.", "Economics.", "Psychology."]
+["If magic was real, what spell would you try to learn first?", "Being invisible.", "Flying.", "Controlling time."]
+["Do you eat food that’s past its expiration date if it still smells and looks fine?", "Yes.", "No way.", "Depends on the food."]
+["Which social media platform do you use the most?", "Facebook.", "Twitter.", "Instagram."]
+["How many languages do you speak?", "Only one.", "Two - three.", "More than three."]
+["Do you like things to be carefully planned or do you prefer to just go with the flow?", "I plan everything out.", "I'm spontaneous.", "It depends."]
+["What’s your best example of easy come, easy go?", "Money.", "People.", "Fame."]
+["Which way should toilet paper hang, over or under?", "Over!", "Under!", "I don't care."]
+["What potato chip flavor do you prefer?", "Salt.", "Chicken.", "Cheese."]
+["How much do you think names affect the outcomes of people’s lives?", "Not at all.", "A lot.", "Yes, if they are strange or unusual."] 
+["Where would you go on vacation?", "Rome.", "DisneyWorld.", "Hawaii."]
+["Do you prefer working with others or alone?", "With others.", "Alone.", "Doesn't matter to me."]
+["Did you get good grades in school?", "Yes, always.", "Not really.", "I was more like an average student."]
+["Maths or English?", "Maths.", "English.", "Neither."]
+["Do you like to take risks?", "Yes.", "No.", "Sometimes."]
+["Are you a rule breaker?", "No.", "Yes.", "Sometimes."]
+["Do you find sticking to a schedule to be boring?", "Yes.", "No.", "It depends."]
+["Are you more shy or outgoing?", "Shy.", "Outgoing.", "A bit of both."]
+["Do politics interest you?", "Not at all.", "Yes, a lot.", "Kind of."]
+["What's your prefered season for traveling?", "Winter.", "Summer.", "Spring/Fall."]
+["You're traveling first class. Which dish do you order from the menu?", "Steak.", "Sushi.", "Pasta with truffles."]
+["What's your favourite potato dish?", "French fries.", "Mashed potatoes.", "Baked potatoes."]
+["If you had to pick a food to never eat again, which one would it be?", "Chocolate.", "Pasta.", "Pizza."]
+["Do you have any tattoos?", "I have many tattoos.", "I have one/two small ones.", "I don't have tattoos."]
+["Do you like horror movies?", "Love them!", "Hate them!", "I don't mind them."]
+["Which of these colors do you like the most?", "Red.", "Blue.", "Yellow."]
+["Who is your favourite F.R.I.E.N.D.S woman character?", "Phoebe", "Monica", "Rachel"]
+["Who is your favourite F.R.I.E.N.D.S man character?", "Ross", "Joey", "Chandler"]
+["What is your favourite type of meat?", "Chicken", "Pork", "Other"]
+["What of these fruits do you like the most?", "Strawberries", "Oranges", "Apples"]
+["Are you a morning person or a night person?", "Night owl.", "Early bird.", "Both."]
+["How many siblings do you have?", "None.", "One or two.", "More than two."]
+["Are you religious?", "Yes.", "I'm an atheist.", "I'm an agnostic."]

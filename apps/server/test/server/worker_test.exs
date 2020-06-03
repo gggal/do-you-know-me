@@ -14,11 +14,14 @@ defmodule Server.WorkerTest do
   def node3(), do: :"node3@127.0.0.1"
 
   setup do
-    # send dummy clients this pid, so they can redirect everything they're being sent
-    # this requires synchronous test execution
-    :ok = GenServer.call({:quiz_client, node1()}, :set_tester)
-    :ok = GenServer.call({:quiz_client, node2()}, :set_tester)
-    :ok = GenServer.call({:quiz_client, node3()}, :set_tester)
+    # stub all external components
+    stub_all()
+
+    # start the server/the clients if they're down
+    Server.Worker.start_link()
+    :rpc.block_call(node1(), Client.Worker, :start_link, [])
+    :rpc.block_call(node2(), Client.Worker, :start_link, [])
+    :rpc.block_call(node3(), Client.Worker, :start_link, [])
 
     # put the server in a consistent initial state
     :sys.replace_state(server_pid(), fn _state ->
@@ -37,45 +40,44 @@ defmodule Server.WorkerTest do
 
   describe "register" do
     test "unsuccessful registration with empty username" do
-      stub_register_user()
+      stub(UserMock, :exists?, fn _name -> false end)
 
       assert :invalid_username == call_server(node1(), :register, ["", "pass"])
     end
 
     test "unsuccessful registration with empty password" do
-      stub_register_user()
+      stub(UserMock, :exists?, fn _name -> false end)
 
       assert :invalid_password == call_server(node1(), :register, ["username1", ""])
     end
 
     test "unsuccessful registration with ill-formatted username" do
-      stub_register_user()
+      stub(UserMock, :exists?, fn _name -> false end)
 
       assert :invalid_username == call_server(node1(), :register, ["&@#", "password"])
     end
 
     test "unsuccessful registration for already registered client" do
-      stub_register_user()
+      stub(UserMock, :exists?, fn _name -> false end)
 
       assert :already_registered == call_server(node2(), :register, ["username4", "password"])
     end
 
     test "unsuccessful registration for a client with already taken name" do
-      stub_register_user()
       UserMock |> expect(:exists?, fn _name -> true end)
 
       assert :taken == call_server(node1(), :register, ["username2", "password"])
     end
 
     test "unsuccessful registration due to failed insert query" do
-      stub_register_user()
+      stub(UserMock, :exists?, fn _name -> false end)
       expect(UserMock, :insert, fn _name, _ -> false end)
 
       assert :db_error == call_server(node1(), :register, ["username1", "password"])
     end
 
     test "successfully registering a client" do
-      stub_register_user()
+      stub(UserMock, :exists?, fn _name -> false end)
 
       assert :ok == call_server(node1(), :register, ["username1", "password"])
     end
@@ -91,27 +93,19 @@ defmodule Server.WorkerTest do
     end
 
     test "failing to unregister unauthenticated client" do
-      stub_unregister_user()
-
       assert :unauthenticated == call_server(node2(), :unregister, ["wrong_password"])
     end
 
     test "failing to unregister client when db fail occurs" do
-      stub_unregister_user()
-
       UserMock |> expect(:delete, fn _name -> false end)
       assert :db_error == call_server(node2(), :unregister, ["password"])
     end
 
     test "remove user from online users list when unregistering" do
-      stub_unregister_user()
-
       assert :ok == call_server(node2(), :unregister, ["password"])
     end
 
     test "successfully unregistering a client" do
-      stub_unregister_user()
-
       assert :ok == call_server(node2(), :unregister, ["password"])
     end
   end
@@ -156,32 +150,34 @@ defmodule Server.WorkerTest do
 
     test "invitations are sent after login" do
       stub_login()
+      ClientMock |> expect(:cast_invitation, fn _, _ -> :ok end)
+      ClientMock |> stub(:cast_to_see, fn _, _, _, _, _ -> :ok end)
       call_server(node1(), :login, ["username1", "password"])
-
-      assert :ok == received(node1(), :cast, {:add_invitation, "username2"})
     end
 
-    test "questions for answering are sent after login" do
+    test "questions for answering/guessing are sent after login" do
       stub_login()
       QuestionMock |> expect(:get_question_answer, 2, fn _ -> {:ok, nil} end)
-      call_server(node1(), :login, ["username1", "password"])
+      ClientMock |> expect(:cast_invitation, fn _, _ -> :ok end)
+      ClientMock |> expect(:cast_to_answer, fn _, _, _ -> :ok end)
 
-      assert :ok == received(node1(), :cast, {:add_question, "username3", 1})
+      call_server(node1(), :login, ["username1", "password"])
     end
 
     test "questions for guessing are sent after login" do
       stub_login()
       QuestionMock |> expect(:get_question_guess, 2, fn _ -> {:ok, nil} end)
+      ClientMock |> expect(:cast_invitation, fn _, _ -> :ok end)
+      ClientMock |> expect(:cast_to_guess, fn _, _, _, _ -> :ok end)
       call_server(node1(), :login, ["username1", "password"])
-
-      assert :ok == received(node1(), :cast, {:add_guess, "username3", 2, :a})
     end
 
     test "questions for review are sent after login" do
       stub_login()
-      call_server(node1(), :login, ["username1", "password"])
 
-      assert :ok == received(node1(), :cast, {:add_see, "username3", 1, :a, :b})
+      ClientMock |> stub(:cast_invitation, fn _, _ -> :ok end)
+      ClientMock |> expect(:cast_to_see, fn _, _, _, _, _ -> :ok end)
+      call_server(node1(), :login, ["username1", "password"])
     end
 
     test "successful login of a user from second client" do
@@ -298,18 +294,20 @@ defmodule Server.WorkerTest do
 
     test "the client is called after sending invitation" do
       stub_invite_user()
+      ClientMock |> expect(:cast_invitation, fn _, _ -> :ok end)
+
       call_server(node3(), :invite, ["username2"])
-      assert :ok = received(node2(), :cast, {:add_invitation, "username3"})
     end
 
     test "the clients are called after mutual invitation" do
       stub_invite_user()
       InvitationMock |> expect(:exists?, 3, fn from, _to -> from == "username2" end)
       GameMock |> expect(:start, fn _, _ -> true end)
+
+      ClientMock |> expect(:cast_to_answer, 2, fn _, _, _ -> true end)
+
       call_server(node3(), :invite, ["username2"])
       call_server(node2(), :invite, ["username3"])
-      assert :ok = received(node2(), :cast, {:add_question, "username3", 0})
-      assert :ok = received(node3(), :cast, {:add_question, "username2", 0})
     end
   end
 
@@ -319,37 +317,30 @@ defmodule Server.WorkerTest do
     end
 
     test "try accepting invitation from a non-existent user" do
-      stub_accept_invitation()
       UserMock |> expect(:exists?, fn _name -> false end)
 
       assert :no_such_user == call_server(node2(), :accept, ["username1"])
     end
 
     test "try accepting non-existent invitation" do
-      stub_accept_invitation()
       InvitationMock |> expect(:exists?, fn _, _ -> false end)
 
       assert :no_such_invitation == call_server(node3(), :accept, ["username2"])
     end
 
     test "try accepting invitation but the query fails" do
-      stub_accept_invitation()
       GameMock |> expect(:start, fn _, _ -> false end)
 
       assert :db_error == call_server(node3(), :accept, ["username2"])
     end
 
     test "accept invitation successfully" do
-      stub_accept_invitation()
-
       assert :ok == call_server(node3(), :accept, ["username2"])
     end
 
     test "the clients are called after a game starts" do
-      stub_accept_invitation()
+      ClientMock |> expect(:cast_to_answer, 2, fn _, _, _ -> true end)
       call_server(node3(), :accept, ["username2"])
-      assert :ok = received(node2(), :cast, {:add_question, "username3", 0})
-      assert :ok = received(node3(), :cast, {:add_question, "username2", 0})
     end
   end
 
@@ -359,29 +350,24 @@ defmodule Server.WorkerTest do
     end
 
     test "try declining invitation from a non-existent user" do
-      stub_decline_invitation()
       UserMock |> expect(:exists?, fn _name -> false end)
 
       assert :no_such_user == call_server(node3(), :decline, ["username2"])
     end
 
     test "try declining non-existent invitation" do
-      stub_decline_invitation()
       InvitationMock |> expect(:exists?, fn _, _ -> false end)
 
       assert :no_such_invitation == call_server(node3(), :decline, ["username2"])
     end
 
     test "try declining invitation but the query fails" do
-      stub_decline_invitation()
       InvitationMock |> expect(:delete, fn _, _ -> false end)
 
       assert :db_error == call_server(node3(), :decline, ["username2"])
     end
 
     test "decline invitation successfully" do
-      stub_decline_invitation()
-
       assert :ok == call_server(node3(), :decline, ["username2"])
     end
   end
@@ -392,68 +378,49 @@ defmodule Server.WorkerTest do
     end
 
     test "try answering a question from non-existent user" do
-      stub_answer()
       UserMock |> expect(:exists?, fn _ -> false end)
 
       assert :no_such_user = call_server(node3(), :answer_question, ["username1", "a"])
     end
 
     test "try answering a question but there's no game record" do
-      stub_answer()
       GameMock |> expect(:exists?, fn _, _ -> false end)
 
       assert :no_such_game = call_server(node3(), :answer_question, ["username2", "a"])
     end
 
     test "try answering a question but the answer is not a/b/c" do
-      stub_answer()
-
       assert :invalid_response = call_server(node3(), :answer_question, ["username2", "d"])
     end
 
     test "try answering a question but the answer is nil" do
-      stub_answer()
-
       assert :invalid_response = call_server(node3(), :answer_question, ["username2", nil])
     end
 
     test "try answering a question but there's no question in the db" do
-      stub_answer()
       QuestionMock |> expect(:get_question_number, fn _ -> false end)
 
       assert :db_error = call_server(node3(), :answer_question, ["username2", "a"])
     end
 
     test "try answering a question but the insert query fails" do
-      stub_answer()
       GameMock |> expect(:answer_question, fn _, _, _ -> false end)
 
       assert :db_error = call_server(node3(), :answer_question, ["username2", "a"])
     end
 
-    test "a 'guess' message is being sent to the other user upon answering" do
-      stub_answer()
+    test "messages are being sent to the users upon answering" do
+      ClientMock |> expect(:cast_to_answer, fn _, _, _ -> :ok end)
+      ClientMock |> expect(:cast_to_guess, fn _, _, _, _ -> :ok end)
+
       call_server(node3(), :answer_question, ["username2", "a"])
-
-      assert :ok = received(node3(), :cast, {:add_question, "username2", 0})
-    end
-
-    test "an 'answer' message is being sent to the user upon answering" do
-      stub_answer()
-      call_server(node3(), :answer_question, ["username2", "a"])
-
-      assert :ok = received(node2(), :cast, {:add_guess, "username3", 0, "a"})
     end
 
     test "answer a question when other user is not online" do
-      stub_answer()
-
       assert :ok = call_server(node3(), :answer_question, ["username1", "a"])
     end
 
     test "answer a question successfully" do
-      stub_answer()
-
       assert :ok = call_server(node3(), :answer_question, ["username2", "a"])
     end
   end
@@ -464,54 +431,41 @@ defmodule Server.WorkerTest do
     end
 
     test "try guessing a question but the user doesn't exist" do
-      stub_guess()
       UserMock |> expect(:exists?, fn _ -> false end)
 
       assert :no_such_user = call_server(node2(), :guess_question, ["username1", "a"])
     end
 
     test "try guessing a question but the guess is not valid" do
-      stub_guess()
-
       assert :invalid_response = call_server(node2(), :guess_question, ["username1", "d"])
     end
 
     test "try guessing a question but the guess is nil" do
-      stub_guess()
-
       assert :invalid_response = call_server(node2(), :guess_question, ["username1", nil])
     end
 
     test "try guessing a question but there's no such game" do
-      stub_guess()
       GameMock |> expect(:exists?, fn _, _ -> false end)
 
       assert :no_such_game = call_server(node2(), :guess_question, ["username1", "a"])
     end
 
     test "try guessing a question but db query fails" do
-      stub_guess()
       GameMock |> expect(:guess_question, fn _, _, _ -> false end)
 
       assert :db_error = call_server(node2(), :guess_question, ["username1", "a"])
     end
 
     test "a 'show' message is being sent to the other user upon guessing" do
-      stub_guess()
+      ClientMock |> expect(:cast_to_see, fn _, _, _, _, _ -> :ok end)
       call_server(node3(), :guess_question, ["username2", "a"])
-
-      assert :ok = received(node2(), :cast, {:add_see, "username3", 0, "a", "a"})
     end
 
     test "guess a question when other user is not online" do
-      stub_guess()
-
       assert :ok = call_server(node3(), :guess_question, ["username1", "a"])
     end
 
     test "guess a question successfully" do
-      stub_guess()
-
       assert :ok = call_server(node3(), :guess_question, ["username2", "a"])
     end
   end
@@ -528,28 +482,24 @@ defmodule Server.WorkerTest do
     end
 
     test "try getting score but there's no such game" do
-      stub_get_score()
       GameMock |> expect(:exists?, fn _, _ -> false end)
 
       assert :no_such_game = call_server(node2(), :get_score, ["username1"])
     end
 
     test "try getting score but get score query fails" do
-      stub_get_score()
       GameMock |> expect(:get_score, fn _, _ -> :err end)
 
       assert :db_error = call_server(node2(), :get_score, ["username1"])
     end
 
     test "try getting score but get s1 hits query fails" do
-      stub_get_score()
       ScoreMock |> expect(:get_hits, fn _ -> :err end)
 
       assert :db_error = call_server(node2(), :get_score, ["username1"])
     end
 
     test "try getting score but get s2 hits query fails" do
-      stub_get_score()
       ScoreMock |> expect(:get_hits, fn _ -> {:ok, 0} end)
       ScoreMock |> expect(:get_hits, fn _ -> :err end)
 
@@ -557,14 +507,12 @@ defmodule Server.WorkerTest do
     end
 
     test "try getting score but get s1 misses query fails" do
-      stub_get_score()
       ScoreMock |> expect(:get_misses, fn _ -> :err end)
 
       assert :db_error = call_server(node2(), :get_score, ["username1"])
     end
 
     test "try getting score but get s2 misses query fails" do
-      stub_get_score()
       ScoreMock |> expect(:get_misses, fn _ -> {:ok, 0} end)
       ScoreMock |> expect(:get_misses, fn _ -> :err end)
 
@@ -572,14 +520,10 @@ defmodule Server.WorkerTest do
     end
 
     test "getting score successfully" do
-      stub_get_score()
-
       assert {:ok, 25.0, 25.0} = call_server(node2(), :get_score, ["username1"])
     end
 
     test "score is calculated correctly" do
-      stub_get_score()
-
       GameMock
       |> expect(
         :get_score,
@@ -594,98 +538,33 @@ defmodule Server.WorkerTest do
     end
   end
 
-  defp stub_register_user do
-    stub(UserMock, :exists?, fn _name -> false end)
-    stub(UserMock, :insert, fn _name, _ -> true end)
-  end
-
-  defp stub_unregister_user do
-    UserMock |> stub(:get_password, fn _name -> "password" end)
-    UserMock |> stub(:delete, fn _name -> true end)
+  def stub_all do
+    Mox.stub_with(Application.get_env(:server, :user), DummyUser)
+    Mox.stub_with(Application.get_env(:server, :game), DummyGame)
+    Mox.stub_with(Application.get_env(:server, :question), DummyQuestion)
+    Mox.stub_with(Application.get_env(:server, :invitation), DummyInvitation)
+    Mox.stub_with(Application.get_env(:server, :score), DummyScore)
+    Mox.stub_with(Application.get_env(:server, :client), DummyClient)
   end
 
   defp stub_login do
-    UserMock |> stub(:exists?, fn _name -> true end)
-    UserMock |> stub(:get_password, fn _name -> "password" end)
-    InvitationMock |> stub(:get_all_for, fn _ -> {:ok, ["username2"]} end)
-    GameMock |> stub(:all_related, fn _ -> ["username3"] end)
-
-    GameMock
-    |> stub(
+    stub(
+      GameMock,
       :get_question,
       fn _, user -> if user == "username1", do: {:ok, 1}, else: {:ok, 2} end
     )
-
-    QuestionMock |> stub(:get_question_number, fn num -> {:ok, num} end)
-    QuestionMock |> stub(:get_question_answer, fn _ -> {:ok, :a} end)
-    QuestionMock |> stub(:get_question_guess, fn _ -> {:ok, :b} end)
-  end
-
-  defp stub_answer do
-    UserMock |> stub(:exists?, fn _ -> true end)
-    GameMock |> stub(:exists?, fn _, _ -> true end)
-    GameMock |> stub(:get_question, fn _, _ -> {:ok, 1} end)
-    GameMock |> stub(:answer_question, fn _, _, _ -> true end)
-    QuestionMock |> stub(:get_question_number, fn _ -> {:ok, 0} end)
-  end
-
-  defp stub_guess do
-    UserMock |> stub(:exists?, fn _ -> true end)
-    GameMock |> stub(:exists?, fn _, _ -> true end)
-    GameMock |> stub(:get_question, fn _, _ -> {:ok, 1} end)
-    QuestionMock |> stub(:get_question_number, fn _ -> {:ok, 0} end)
-    QuestionMock |> stub(:get_question_answer, fn _ -> {:ok, "a"} end)
-    QuestionMock |> stub(:get_question_guess, fn _ -> {:ok, "a"} end)
-    GameMock |> stub(:guess_question, fn _, _, _ -> true end)
-  end
-
-  defp stub_get_score do
-    UserMock |> stub(:exists?, fn _ -> true end)
-    GameMock |> stub(:exists?, fn _, _ -> true end)
-    GameMock |> stub(:get_score, fn _, _ -> {:ok, 1} end)
-    ScoreMock |> stub(:get_hits, fn _ -> {:ok, 1} end)
-    ScoreMock |> stub(:get_misses, fn _ -> {:ok, 3} end)
   end
 
   defp stub_invite_user do
-    UserMock |> stub(:exists?, fn _name -> true end)
     GameMock |> stub(:exists?, fn _, _ -> false end)
     InvitationMock |> stub(:exists?, fn _, _ -> false end)
-    InvitationMock |> stub(:insert, fn _, _ -> true end)
-    GameMock |> stub(:get_question, fn _, _ -> {:ok, 0} end)
-    QuestionMock |> stub(:get_question_number, fn _ -> {:ok, 0} end)
-    GameMock |> stub(:start, fn _, _ -> true end)
   end
 
-  defp stub_accept_invitation do
-    UserMock |> stub(:exists?, fn _name -> true end)
-    InvitationMock |> stub(:exists?, fn _, _ -> true end)
-    GameMock |> stub(:get_question, fn _, _ -> {:ok, 0} end)
-    QuestionMock |> stub(:get_question_number, fn _ -> {:ok, 0} end)
-    GameMock |> stub(:start, fn _, _ -> true end)
-  end
-
-  defp stub_decline_invitation do
-    UserMock |> stub(:exists?, fn _name -> true end)
-    InvitationMock |> stub(:exists?, fn _, _ -> true end)
-    InvitationMock |> stub(:delete, fn _, _ -> true end)
-  end
-
-  defp remote_call(node, args) do
-    :rpc.call(node, GenServer, :call, [{:global, :quiz_server}, args])
-  end
-
-  defp call_server(node, func, args) do
-    :rpc.call(node, Server.Worker, func, [server_pid()] ++ args)
+  def call_server(node, func, args) do
+    :rpc.call(node, Server.Worker, func, args)
   end
 
   defp server_pid, do: :global.whereis_name(:quiz_server)
 
-  defp received(node, type, msg) do
-    receive do
-      {^node, ^type, ^msg} -> :ok
-    after
-      5_000 -> :time_out
-    end
-  end
+  defp client_pid(node), do: :rpc.call(node, Process, :whereis, [:quiz_client])
 end

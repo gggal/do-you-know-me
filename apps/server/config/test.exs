@@ -5,6 +5,8 @@ config :server, game: GameMock
 config :server, invitation: InvitationMock
 config :server, question: QuestionMock
 config :server, score: ScoreMock
+config :server, client: ClientMock
+config :server, server_worker: ServerMock
 
 config :server, db_name: :server
 
