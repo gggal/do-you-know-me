@@ -9,7 +9,7 @@ defmodule Client.Worker do
 
   # TODO: client sending invitation/question/guess/answer to themselves
 
-  def server_module, do: Application.get_env(:server, :server_worker)
+  def server_module, do: Application.get_env(:engine, :server_worker)
 
   @questions_file "questions.txt"
 

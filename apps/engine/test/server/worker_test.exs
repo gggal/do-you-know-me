@@ -539,12 +539,12 @@ defmodule Server.WorkerTest do
   end
 
   def stub_all do
-    Mox.stub_with(Application.get_env(:server, :user), DummyUser)
-    Mox.stub_with(Application.get_env(:server, :game), DummyGame)
-    Mox.stub_with(Application.get_env(:server, :question), DummyQuestion)
-    Mox.stub_with(Application.get_env(:server, :invitation), DummyInvitation)
-    Mox.stub_with(Application.get_env(:server, :score), DummyScore)
-    Mox.stub_with(Application.get_env(:server, :client), DummyClient)
+    Mox.stub_with(Application.get_env(:engine, :user), DummyUser)
+    Mox.stub_with(Application.get_env(:engine, :game), DummyGame)
+    Mox.stub_with(Application.get_env(:engine, :question), DummyQuestion)
+    Mox.stub_with(Application.get_env(:engine, :invitation), DummyInvitation)
+    Mox.stub_with(Application.get_env(:engine, :score), DummyScore)
+    Mox.stub_with(Application.get_env(:engine, :client), DummyClient)
   end
 
   defp stub_login do

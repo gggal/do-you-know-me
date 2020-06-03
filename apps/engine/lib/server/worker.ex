@@ -8,13 +8,13 @@ defmodule Server.Worker do
 
   alias Server.State
 
-  def user_model, do: Application.get_env(:server, :user)
-  def game_model, do: Application.get_env(:server, :game)
-  def question_model, do: Application.get_env(:server, :question)
-  def invitation_model, do: Application.get_env(:server, :invitation)
-  def score_model, do: Application.get_env(:server, :score)
+  def user_model, do: Application.get_env(:engine, :user)
+  def game_model, do: Application.get_env(:engine, :game)
+  def question_model, do: Application.get_env(:engine, :question)
+  def invitation_model, do: Application.get_env(:engine, :invitation)
+  def score_model, do: Application.get_env(:engine, :score)
 
-  def client_module, do: Application.get_env(:server, :client)
+  def client_module, do: Application.get_env(:engine, :client)
 
   @questions_count 100
 

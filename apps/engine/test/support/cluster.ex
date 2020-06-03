@@ -1,4 +1,4 @@
-defmodule Server.Cluster do
+defmodule Engine.Cluster do
   def spawn do
     :net_kernel.start([:"first@127.0.0.1"])
 

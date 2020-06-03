@@ -1,9 +1,9 @@
-defmodule Server.MixProject do
+defmodule Engine.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :server,
+      app: :engine,
       version: "0.1.0",
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
@@ -17,7 +17,7 @@ defmodule Server.MixProject do
     [
       applications: [:ecto, :postgrex],
       extra_applications: [:logger, :observer],
-      mod: {Server.Application, []}
+      mod: {Engine.Application, []}
     ]
   end
 

@@ -1,4 +1,4 @@
-defmodule Server.Application do
+defmodule Engine.Application do
   @moduledoc """
   Server Application
 

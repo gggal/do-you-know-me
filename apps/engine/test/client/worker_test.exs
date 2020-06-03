@@ -10,12 +10,12 @@ defmodule Client.WorkerTest do
   alias Client.State
 
   setup_all do
-    Mox.defmock(Application.get_env(:server, :server_worker), for: Server.Behaviour)
+    Mox.defmock(Application.get_env(:engine, :server_worker), for: Server.Behaviour)
     :ok
   end
 
   setup do
-    Mox.stub_with(Application.get_env(:server, :server_worker), DummyServer)
+    Mox.stub_with(Application.get_env(:engine, :server_worker), DummyServer)
 
     Client.Worker.start_link()
     # assert {:ok, "sad"} == Process.whereis(:quiz_client)
