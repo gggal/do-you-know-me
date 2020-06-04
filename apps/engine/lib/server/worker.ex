@@ -178,7 +178,7 @@ defmodule Server.Worker do
   Starts the server process.
   """
   def start_link() do
-    GenServer.start_link(__MODULE__, State.new(), name: {:global, :dykm_client})
+    GenServer.start_link(__MODULE__, State.new(), name: {:global, :dykm_server})
   end
 
   @doc """
@@ -534,5 +534,5 @@ defmodule Server.Worker do
   end
 
   # the pid of this genserver
-  defp self_pid, do: :global.whereis_name(:dykm_client)
+  defp self_pid, do: :global.whereis_name(:dykm_server)
 end
