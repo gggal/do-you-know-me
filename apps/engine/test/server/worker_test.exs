@@ -564,7 +564,7 @@ defmodule Server.WorkerTest do
     :rpc.call(node, Server.Worker, func, args)
   end
 
-  defp server_pid, do: :global.whereis_name(:quiz_server)
+  defp server_pid, do: :global.whereis_name(:dykm_client)
 
-  defp client_pid(node), do: :rpc.call(node, Process, :whereis, [:quiz_client])
+  defp client_pid(node), do: :rpc.call(node, Process, :whereis, [:dykm_client])
 end

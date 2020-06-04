@@ -178,7 +178,7 @@ defmodule Server.Worker do
   Starts the server process.
   """
   def start_link() do
-    GenServer.start_link(__MODULE__, State.new(), name: {:global, :quiz_server})
+    GenServer.start_link(__MODULE__, State.new(), name: {:global, :dykm_client})
   end
 
   @doc """
@@ -211,7 +211,7 @@ defmodule Server.Worker do
   def handle_call({:register, user, password}, {client_pid, _}, state) do
     with :ok <- valid_register_input?(user, client_pid, password, state) do
       if user_model().insert(user, password) do
-        Process.monitor({:quiz_client, node(client_pid)})
+        Process.monitor({:dykm_client, node(client_pid)})
         {:reply, :ok, State.add(state, user, node(client_pid))}
       else
         {:reply, :db_error, state}
@@ -225,7 +225,7 @@ defmodule Server.Worker do
     with :ok <- valid_login_input?(user, password, client_pid, state) do
       state = State.add(state, user, node(client_pid))
       restore_client_state(user, state)
-      Process.monitor({:quiz_client, node(client_pid)})
+      Process.monitor({:dykm_client, node(client_pid)})
       {:reply, :ok, state}
     else
       {:err, reason} -> {:reply, reason, state}
@@ -534,5 +534,5 @@ defmodule Server.Worker do
   end
 
   # the pid of this genserver
-  defp self_pid, do: :global.whereis_name(:quiz_server)
+  defp self_pid, do: :global.whereis_name(:dykm_client)
 end

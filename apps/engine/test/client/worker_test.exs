@@ -18,32 +18,36 @@ defmodule Client.WorkerTest do
     Mox.stub_with(Application.get_env(:engine, :server_worker), DummyServer)
 
     Client.Worker.start_link()
-    # assert {:ok, "sad"} == Process.whereis(:quiz_client)
-    Process.whereis(:quiz_client) |> :sys.replace_state(fn _ -> State.new() end)
+    set_client_state(fn _ -> State.new() end)
     :ok
   end
 
   describe "register" do
     test "registration fails when the client has a user associated with it" do
-      :sys.replace_state(client_pid(), fn state -> State.set_username(state, "some_name") end)
+      set_client_state(fn state -> State.set_username(state, "some_name") end)
 
-      assert :already_registered == Worker.register("name", "pass")
+      assert {:err, :already_bound} == Worker.register("name", "pass")
     end
 
     test "trying to register but the name is not a string" do
-      assert :invalid_format == Worker.register(:name, "pass")
+      assert {:err, :invalid_format} == Worker.register(:name, "pass")
     end
 
     test "trying to register but the name is empty string" do
-      assert :invalid_format == Worker.register("", "pass")
+      assert {:err, :invalid_format} == Worker.register("", "pass")
     end
 
     test "trying to register but the password is not a string" do
-      assert :invalid_format == Worker.register("user", :pass)
+      assert {:err, :invalid_format} == Worker.register("user", :pass)
     end
 
     test "trying to register but the password is empty string" do
-      assert :invalid_format == Worker.register("user", "")
+      assert {:err, :invalid_format} == Worker.register("user", "")
+    end
+
+    test "trying to register but the server returns error" do
+      ServerMock |> expect(:register, fn _, _ -> :internal_err end)
+      assert {:err, :internal_err} == Worker.register("user", "pass")
     end
 
     test "successful registration" do
@@ -58,26 +62,30 @@ defmodule Client.WorkerTest do
 
   describe "login" do
     test "login fails when the client has a user associated with it" do
-      client_pid()
-      |> :sys.replace_state(fn state -> State.set_username(state, "some_name") end)
+      set_client_state(fn state -> State.set_username(state, "some_name") end)
 
-      assert :already_registered == Worker.login("name", "pass")
+      assert {:err, :already_bound} == Worker.login("name", "pass")
     end
 
     test "trying to login but the name is not a string" do
-      assert :invalid_format == Worker.login(:name, "pass")
+      assert {:err, :invalid_format} == Worker.login(:name, "pass")
     end
 
     test "trying to login but the name is empty string" do
-      assert :invalid_format == Worker.login("", "pass")
+      assert {:err, :invalid_format} == Worker.login("", "pass")
     end
 
     test "trying to login but the password is not a string" do
-      assert :invalid_format == Worker.login("user", :pass)
+      assert {:err, :invalid_format} == Worker.login("user", :pass)
     end
 
     test "trying to login but the password is empty string" do
-      assert :invalid_format == Worker.login("user", "")
+      assert {:err, :invalid_format} == Worker.login("user", "")
+    end
+
+    test "trying to register but the server returns error" do
+      ServerMock |> expect(:login, fn _, _ -> :internal_err end)
+      assert {:err, :internal_err} == Worker.login("user", "pass")
     end
 
     test "successful login" do
@@ -92,30 +100,35 @@ defmodule Client.WorkerTest do
 
   describe "unregister" do
     test "successful unregistration" do
-      client_pid()
-      |> :sys.replace_state(fn state -> State.set_username(state, "some_name") end)
+      set_client_state(fn state -> State.set_username(state, "some_name") end)
 
       assert :ok == Worker.unregister("pass")
     end
 
+    test "try to unregistration but the server returns an error" do
+      set_client_state(fn state -> State.set_username(state, "some_name") end)
+
+      ServerMock |> expect(:unregister, fn _ -> :internal_error end)
+
+      assert {:err, :internal_error} == Worker.unregister("pass")
+    end
+
     test "a call to the server has been made" do
-      client_pid()
-      |> :sys.replace_state(fn state -> State.set_username(state, "some_name") end)
+      set_client_state(fn state -> State.set_username(state, "some_name") end)
 
       ServerMock |> expect(:unregister, fn _ -> :ok end)
       Worker.unregister("pass")
     end
 
     test "trying to unregister without registering" do
-      assert :not_registered == Worker.unregister("pass")
+      assert {:err, :not_bound} == Worker.unregister("pass")
     end
 
     test "state is nulled out after unregistering" do
-      client_pid()
-      |> :sys.replace_state(fn state -> State.set_username(state, "some_name") end)
+      set_client_state(fn state -> State.set_username(state, "some_name") end)
 
       Worker.unregister("pass")
-      assert State.new() == :sys.get_state(client_pid())
+      assert State.new() == :sys.get_state(:dykm_client)
     end
   end
 
@@ -125,8 +138,7 @@ defmodule Client.WorkerTest do
     end
 
     test "get username successfully" do
-      client_pid()
-      |> :sys.replace_state(fn state -> State.set_username(state, "some_name") end)
+      set_client_state(fn state -> State.set_username(state, "some_name") end)
 
       assert "some_name" == Worker.username()
     end
@@ -134,83 +146,128 @@ defmodule Client.WorkerTest do
 
   describe "get invitations" do
     test "get empty set if there's no invitations" do
-      assert MapSet.new() == Worker.get_invitations()
+      set_client_state(fn state -> State.set_username(state, "some_name") end)
+
+      assert {:ok, MapSet.new()} == Worker.get_invitations()
+    end
+
+    test "try to get invitations but the client has no user for it" do
+      assert {:err, :not_bound} == Worker.get_invitations()
     end
 
     test "get all invitations successfully" do
-      client_pid()
-      |> :sys.replace_state(fn state -> State.add_invitation(state, "some_name") end)
+      set_client_state(fn state ->
+        State.add_invitation(state, "some_name") |> State.set_username("name")
+      end)
 
-      assert MapSet.new(["some_name"]) == Worker.get_invitations()
+      assert {:ok, MapSet.new(["some_name"])} == Worker.get_invitations()
     end
   end
 
   describe "get question to guess" do
+    test "there's no user associated with the client" do
+      assert {:err, :not_bound} == Worker.get_to_guess("some_name")
+    end
+
     test "there's no question to guess" do
+      set_client_state(fn state -> State.set_username(state, "name") end)
+
       assert {:err, :no_such_question} == Worker.get_to_guess("some_name")
     end
 
     test "guess a question successfully" do
-      client_pid()
-      |> :sys.replace_state(fn state -> State.put_to_guess(state, "some_name", {1, "a"}) end)
+      set_client_state(fn state ->
+        State.put_to_guess(state, "some_name", {1, "a"}) |> State.set_username("name")
+      end)
 
       assert :ok == Worker.get_to_guess("some_name") |> elem(0)
     end
 
     test "guess a question but server sends invalid guess format" do
-      client_pid()
-      |> :sys.replace_state(fn state -> State.put_to_guess(state, "some_name", {"a", 1}) end)
+      set_client_state(fn state ->
+        State.put_to_guess(state, "some_name", {"a", 1}) |> State.set_username("name")
+      end)
 
       assert {:err, :invalid_format} == Worker.get_to_guess("some_name")
     end
   end
 
   describe "get question to answer" do
+    test "there's no user associated with the client" do
+      assert {:err, :not_bound} == Worker.get_to_answer("some_name")
+    end
+
     test "there's no question to answer" do
+      set_client_state(fn state -> State.set_username(state, "name") end)
+
       assert {:err, :no_such_question} == Worker.get_to_answer("some_name")
     end
 
     test "answer a question but server sends invalid answer format" do
-      client_pid()
-      |> :sys.replace_state(fn state -> State.put_to_answer(state, "some_name", {1, "a"}) end)
+      set_client_state(fn state ->
+        State.put_to_answer(state, "some_name", {1, "a"}) |> State.set_username("name")
+      end)
 
       assert {:err, :invalid_format} == Worker.get_to_answer("some_name")
     end
 
     test "answer a question successfully" do
-      client_pid()
-      |> :sys.replace_state(fn state -> State.put_to_answer(state, "some_name", 1) end)
+      set_client_state(fn state ->
+        State.put_to_answer(state, "some_name", 1) |> State.set_username("name")
+      end)
 
       assert :ok == Worker.get_to_answer("some_name") |> elem(0)
     end
   end
 
   describe "get question to see" do
+    test "there's no user associated with the client" do
+      assert {:err, :not_bound} == Worker.get_to_see("some_name")
+    end
+
     test "there's no question to see" do
+      set_client_state(fn state -> State.set_username(state, "name") end)
+
       assert {:err, :no_such_question} == Worker.get_to_see("some_name")
     end
 
     test "see a see but server sends invalid format" do
-      client_pid()
-      |> :sys.replace_state(fn state -> State.put_to_see(state, "some_name", {1, "a"}) end)
+      set_client_state(fn state ->
+        State.put_to_see(state, "some_name", {1, "a"}) |> State.set_username("name")
+      end)
 
       assert {:err, :invalid_format} = Worker.get_to_see("some_name")
     end
 
     test "see a question successfully" do
-      client_pid()
-      |> :sys.replace_state(fn state -> State.put_to_see(state, "some_name", {1, "a", "b"}) end)
+      set_client_state(fn state ->
+        State.put_to_see(state, "some_name", {1, "a", "b"}) |> State.set_username("name")
+      end)
 
       assert :ok == Worker.get_to_see("some_name") |> elem(0)
     end
   end
 
   describe "get score" do
+    test "there's no user associated with the client" do
+      assert {:err, :not_bound} == Worker.get_score("some_name")
+    end
+
     test "get score successfully" do
+      set_client_state(fn state -> State.set_username(state, "name") end)
+
       assert {:ok, 50.0, 50.0} == Worker.get_score("some_name")
     end
 
+    test "try to get score but the server returns an error" do
+      set_client_state(fn state -> State.set_username(state, "name") end)
+      ServerMock |> expect(:get_score, fn _ -> :internal_error end)
+
+      assert {:err, :internal_error} == Worker.get_score("some_name")
+    end
+
     test "a call to the server has been made" do
+      set_client_state(fn state -> State.set_username(state, "name") end)
       ServerMock |> expect(:get_score, fn _ -> {:ok, 0, 0} end)
 
       Worker.get_score("some_name")
@@ -219,64 +276,81 @@ defmodule Client.WorkerTest do
 
   describe "list users" do
     test "list related users successfully" do
+      set_client_state(fn state -> State.set_username(state, "some_name") end)
       assert {:ok, []} == Worker.list_related()
     end
 
+    test "there's no user associated with the client when listing related users" do
+      assert {:err, :not_bound} == Worker.list_related()
+    end
+
     test "a call to the server has been made when listing related users" do
+      set_client_state(fn state -> State.set_username(state, "some_name") end)
       ServerMock |> expect(:list_related, fn -> {:ok, []} end)
 
       Worker.list_related()
     end
 
     test "list related users but the server returns error" do
+      set_client_state(fn state -> State.set_username(state, "some_name") end)
       ServerMock |> stub(:list_related, fn -> :unauthenticated end)
       assert {:err, :unauthenticated} == Worker.list_related()
     end
 
-    test "list related users ignoring own username" do
-      :sys.replace_state(client_pid(), fn state -> State.set_username(state, "some_name") end)
-      ServerMock |> stub(:list_related, fn -> {:ok, ["some_name"]} end)
-      assert {:ok, []} == Worker.list_related()
+    test "there's no user associated with the client when listing all users" do
+      assert {:err, :not_bound} == Worker.list_registered()
     end
 
     test "list all users successfully" do
+      set_client_state(fn state -> State.set_username(state, "some_name") end)
+
       assert {:ok, []} == Worker.list_registered()
     end
 
     test "a call to the server has been made when listing all users" do
+      set_client_state(fn state -> State.set_username(state, "some_name") end)
       ServerMock |> expect(:list_users, fn -> {:ok, []} end)
 
       Worker.list_registered()
     end
 
     test "list all users but the server returns error" do
+      set_client_state(fn state -> State.set_username(state, "some_name") end)
       ServerMock |> stub(:list_users, fn -> :unauthenticated end)
       assert {:err, :unauthenticated} == Worker.list_registered()
     end
 
     test "list all users ignoring own username" do
-      :sys.replace_state(client_pid(), fn state -> State.set_username(state, "some_name") end)
+      set_client_state(fn state -> State.set_username(state, "some_name") end)
       ServerMock |> stub(:list_users, fn -> {:ok, ["some_name"]} end)
       assert {:ok, []} == Worker.list_registered()
     end
   end
 
   describe "guess" do
+    test "there's no user associated with the client" do
+      assert {:err, :not_bound} == Worker.give_guess("some_name", "d")
+    end
+
     test "try to give a guess other that a/b/c" do
-      :sys.replace_state(client_pid(), fn state ->
+      set_client_state(fn state ->
         State.put_to_guess(state, "some_name", {"q", "a"})
+        |> State.set_username("name")
       end)
 
       assert {:err, :invalid_format} == Worker.give_guess("some_name", "d")
     end
 
     test "try to give a guess without a question to exist" do
+      set_client_state(fn state -> State.set_username(state, "name") end)
+
       assert {:err, :no_such_question} == Worker.give_guess("some_name", "a")
     end
 
     test "try to give a guess but the server returns an error" do
-      :sys.replace_state(client_pid(), fn state ->
+      set_client_state(fn state ->
         State.put_to_guess(state, "some_name", {"q", "a"})
+        |> State.set_username("name")
       end)
 
       ServerMock |> stub(:guess_question, fn _, _ -> :internal_error end)
@@ -285,24 +359,27 @@ defmodule Client.WorkerTest do
     end
 
     test "give a correct guess successfully" do
-      :sys.replace_state(client_pid(), fn state ->
+      set_client_state(fn state ->
         State.put_to_guess(state, "some_name", {"q", "a"})
+        |> State.set_username("name")
       end)
 
       assert {:ok, true} == Worker.give_guess("some_name", "a")
     end
 
     test "give a incorrect guess successfully" do
-      :sys.replace_state(client_pid(), fn state ->
+      set_client_state(fn state ->
         State.put_to_guess(state, "some_name", {"q", "a"})
+        |> State.set_username("name")
       end)
 
       assert {:ok, false} == Worker.give_guess("some_name", "b")
     end
 
     test "a call to the server has been made" do
-      :sys.replace_state(client_pid(), fn state ->
+      set_client_state(fn state ->
         State.put_to_guess(state, "some_name", {"q", "a"})
+        |> State.set_username("name")
       end)
 
       ServerMock |> expect(:guess_question, fn _, _ -> :ok end)
@@ -311,31 +388,40 @@ defmodule Client.WorkerTest do
     end
 
     test "remove the guess from the internal state upon success" do
-      :sys.replace_state(client_pid(), fn state ->
+      set_client_state(fn state ->
         State.put_to_guess(state, "some_name", {"q", "a"})
+        |> State.set_username("name")
       end)
 
       assert {:ok, false} == Worker.give_guess("some_name", "b")
-      assert nil == :sys.get_state(client_pid()) |> State.get_to_guess("some_name")
+      assert nil == :sys.get_state(:dykm_client) |> State.get_to_guess("some_name")
     end
   end
 
   describe "answer" do
+    test "there's no user associated with the client" do
+      assert {:err, :not_bound} == Worker.give_answer("some_name", "d")
+    end
+
     test "try to give an answer other that a/b/c" do
-      :sys.replace_state(client_pid(), fn state ->
+      set_client_state(fn state ->
         State.put_to_answer(state, "some_name", "q")
+        |> State.set_username("name")
       end)
 
       assert {:err, :invalid_format} == Worker.give_answer("some_name", "d")
     end
 
     test "try to give an answer without a question to exist" do
+      set_client_state(fn state -> State.set_username(state, "name") end)
+
       assert {:err, :no_such_question} == Worker.give_answer("some_name", "a")
     end
 
     test "try to give an answer but the server returns an error" do
-      :sys.replace_state(client_pid(), fn state ->
+      set_client_state(fn state ->
         State.put_to_answer(state, "some_name", "q")
+        |> State.set_username("name")
       end)
 
       ServerMock |> stub(:answer_question, fn _, _ -> :internal_error end)
@@ -344,16 +430,18 @@ defmodule Client.WorkerTest do
     end
 
     test "give an answer successfully" do
-      :sys.replace_state(client_pid(), fn state ->
+      set_client_state(fn state ->
         State.put_to_answer(state, "some_name", "q")
+        |> State.set_username("name")
       end)
 
       assert :ok == Worker.give_answer("some_name", "a")
     end
 
     test "a call to the server has been made" do
-      :sys.replace_state(client_pid(), fn state ->
+      set_client_state(fn state ->
         State.put_to_answer(state, "some_name", "q")
+        |> State.set_username("name")
       end)
 
       ServerMock |> expect(:answer_question, fn _, _ -> :ok end)
@@ -362,34 +450,56 @@ defmodule Client.WorkerTest do
     end
 
     test "remove the answer from the internal state upon success" do
-      :sys.replace_state(client_pid(), fn state ->
+      set_client_state(fn state ->
         State.put_to_answer(state, "some_name", "q")
+        |> State.set_username("name")
       end)
 
       assert :ok == Worker.give_answer("some_name", "b")
-      assert nil == :sys.get_state(client_pid()) |> State.get_to_answer("some_name")
+      assert nil == :sys.get_state(:dykm_client) |> State.get_to_answer("some_name")
     end
   end
 
   describe "invite" do
+    test "there's no user associated with the client" do
+      assert {:err, :not_bound} == Worker.invite("some_name")
+    end
+
+    test "try to invite user but the server returns error" do
+      set_client_state(fn state -> State.set_username(state, "name") end)
+      ServerMock |> expect(:invite, fn _ -> :internal_error end)
+      assert {:err, :internal_error} == Worker.invite("some_name")
+    end
+
     test "invite user successfully" do
+      set_client_state(fn state -> State.set_username(state, "name") end)
+
       assert :ok == Worker.invite("some_name")
     end
 
     test "a call to the server has been made" do
+      set_client_state(fn state -> State.set_username(state, "name") end)
+
       ServerMock |> expect(:invite, fn _ -> :ok end)
       Worker.invite("some_name")
     end
   end
 
   describe "accept invitation" do
+    test "there's no user associated with the client" do
+      assert {:err, :not_bound} == Worker.accept("some_name")
+    end
+
     test "try to accept non-existent invitation" do
+      set_client_state(fn state -> State.set_username(state, "name") end)
+
       assert {:err, :no_such_user} == Worker.accept("some_name")
     end
 
     test "try to accept invitation but the server returns error" do
-      :sys.replace_state(client_pid(), fn state ->
+      set_client_state(fn state ->
         State.add_invitation(state, "some_name")
+        |> State.set_username("name")
       end)
 
       ServerMock |> stub(:accept, fn _ -> :internal_error end)
@@ -397,8 +507,9 @@ defmodule Client.WorkerTest do
     end
 
     test "a call to the server has been made" do
-      :sys.replace_state(client_pid(), fn state ->
+      set_client_state(fn state ->
         State.add_invitation(state, "some_name")
+        |> State.set_username("name")
       end)
 
       ServerMock |> expect(:accept, fn _ -> :internal_error end)
@@ -406,31 +517,40 @@ defmodule Client.WorkerTest do
     end
 
     test "accept invitation successfully" do
-      :sys.replace_state(client_pid(), fn state ->
+      set_client_state(fn state ->
         State.add_invitation(state, "some_name")
+        |> State.set_username("name")
       end)
 
       assert :ok == Worker.accept("some_name")
     end
 
     test "remove invitation from inner state upon success" do
-      :sys.replace_state(client_pid(), fn state ->
+      set_client_state(fn state ->
         State.add_invitation(state, "some_name")
+        |> State.set_username("name")
       end)
 
       assert :ok == Worker.accept("some_name")
-      assert MapSet.new() == :sys.get_state(client_pid()) |> State.get_invitations()
+      assert MapSet.new() == :sys.get_state(:dykm_client) |> State.get_invitations()
     end
   end
 
   describe "decline invitation" do
+    test "there's no user associated with the client" do
+      assert {:err, :not_bound} == Worker.decline("some_name")
+    end
+
     test "try to decline non-existent invitation" do
+      set_client_state(fn state -> State.set_username(state, "name") end)
+
       assert {:err, :no_such_user} == Worker.decline("some_name")
     end
 
     test "try to decline invitation but the server returns error" do
-      :sys.replace_state(client_pid(), fn state ->
+      set_client_state(fn state ->
         State.add_invitation(state, "some_name")
+        |> State.set_username("name")
       end)
 
       ServerMock |> stub(:decline, fn _ -> :internal_error end)
@@ -438,8 +558,9 @@ defmodule Client.WorkerTest do
     end
 
     test "a call to the server has been made" do
-      :sys.replace_state(client_pid(), fn state ->
+      set_client_state(fn state ->
         State.add_invitation(state, "some_name")
+        |> State.set_username("name")
       end)
 
       ServerMock |> expect(:decline, fn _ -> :internal_error end)
@@ -447,57 +568,61 @@ defmodule Client.WorkerTest do
     end
 
     test "decline invitation successfully" do
-      :sys.replace_state(client_pid(), fn state ->
+      set_client_state(fn state ->
         State.add_invitation(state, "some_name")
+        |> State.set_username("name")
       end)
 
       assert :ok == Worker.decline("some_name")
     end
 
     test "remove invitation from inner state upon success" do
-      :sys.replace_state(client_pid(), fn state ->
+      set_client_state(fn state ->
         State.add_invitation(state, "some_name")
+        |> State.set_username("name")
       end)
 
       assert :ok == Worker.decline("some_name")
-      assert MapSet.new() == :sys.get_state(client_pid()) |> State.get_invitations()
+      assert MapSet.new() == :sys.get_state(:dykm_client) |> State.get_invitations()
     end
   end
 
   describe "methods for the server to call" do
     test "casted invitations have to be added to the internal state" do
-      Worker.cast_invitation(:quiz_client, "some_name")
+      Worker.cast_invitation(:dykm_client, "some_name")
 
       assert true ==
-               :sys.get_state(:quiz_client)
+               :sys.get_state(:dykm_client)
                |> State.get_invitations()
                |> MapSet.member?("some_name")
     end
 
     test "casted 'answer' questions have to be added to the internal state" do
-      Worker.cast_to_answer(:quiz_client, "some_name", 0)
+      Worker.cast_to_answer(:dykm_client, "some_name", 0)
 
       assert 0 ==
-               :sys.get_state(:quiz_client)
+               :sys.get_state(:dykm_client)
                |> State.get_to_answer("some_name")
     end
 
     test "casted 'guess' questions have to be added to the internal state" do
-      Worker.cast_to_guess(:quiz_client, "some_name", 0, "a")
+      Worker.cast_to_guess(:dykm_client, "some_name", 0, "a")
 
       assert {0, "a"} ==
-               :sys.get_state(:quiz_client)
+               :sys.get_state(:dykm_client)
                |> State.get_to_guess("some_name")
     end
 
     test "casted 'see' questions have to be added to the internal state" do
-      Worker.cast_to_see(:quiz_client, "some_name", 0, "a", "b")
+      Worker.cast_to_see(:dykm_client, "some_name", 0, "a", "b")
 
       assert {0, "a", "b"} ==
-               :sys.get_state(:quiz_client)
+               :sys.get_state(:dykm_client)
                |> State.get_to_see("some_name")
     end
   end
 
-  defp client_pid, do: Process.whereis(:quiz_client)
+  defp set_client_state(func) do
+    :sys.replace_state(:dykm_client, func)
+  end
 end

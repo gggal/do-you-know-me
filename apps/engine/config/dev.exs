@@ -1,6 +1,5 @@
 import Config
 
-# todo rename app to engine
 config :engine, user: Server.User
 config :engine, game: Server.Game
 config :engine, invitation: Server.Invitation

@@ -13,182 +13,293 @@ defmodule Client.Worker do
 
   @questions_file "questions.txt"
 
+  @type question :: {String.t(), String.t(), String.t(), String.t()}
+
   @moduledoc """
-  This module holds user's name after they are registered, all invitations sent from other users,
-  all the questions they have to answer, all the questions others answered and their guesses,
-  all the questions user had answered and if other's got them right. A user can only register once
-  and the username cannot be changed.
+  This module holds user's name after they are registered, all invitations sent from other
+   users, all the questions they have to answer, all the questions others answered and
+  their guesses, all the questions user had answered and if other's got them right.
 
   The client's inner state consists of the following data:
     - client's username
-    - to_guess - all questions waiting to be guessed, the correct answer, the question and other
-    client's username
+    - to_guess - all questions waiting to be guessed, the correct answer, the question and
+     other client's username
     - to_answer - all questions waiting to be answered, the question and other client's username
     - to_see - all guessed questions, the guess, the correct answer, the question and other
     client's username
+
+  The API described below is intended to be used by both UI applications and the server
+  itself.
+
+  Third-party UI applications should start their own worker in order to comunicate with
+  the server.
   """
 
   # __________API__________#
 
   @doc """
-  Registering client. Once registered the client's data will be saved by the server even if the client is
-  disconnected. This data is relations with the other players. If `name` id is is already taken by another
-  user or this node is associated with another user, registration will fail and :taken will
-  be returned. Returns :registered otherwise.
+  Registers the client by creating new user. Registration is a one-time event. It's
+  possible to register for the second time only if the client has been unregistered
+  beforehand.
+  The username and password should be non-empty strings.
+  Possbile responses are:
+    {:err, :already_bound} - if the client is already associated with a user
+    {:err, :invalid_format} - the username or password is not in the correct format
+    {:err, server_error} - for more info on possible errors refer to the server module
+    :ok - client was successfully bound to the newly-created user
   """
+  @spec register(String.t(), String.t()) :: {:err, atom()} | :ok
   def register(name, password) do
-    Logger.info("Client is registering")
-    GenServer.call(:quiz_client, {:register, name, password})
+    Logger.info("Client for #{name} is registering")
+    GenServer.call(:dykm_client, {:register, name, password})
   end
 
+  @doc """
+  Associates the client with an already existing user by providing valid username and
+  password. They should be non-empty strings.
+  Possible responses are:
+    {:err, :already_bound} - if the client is already associated with a user
+    {:err, :invalid_format} - the username or password is not in the correct format
+    {:err, server_error} - for more info on possible errors refer to the server module
+    :ok - client was successfully bound to the specified user
+  """
+  @spec login(String.t(), String.t()) :: {:err, atom()} | :ok
   def login(name, password) do
     Logger.info("Client is logging in")
-    GenServer.call(:quiz_client, {:login, name, password})
+    GenServer.call(:dykm_client, {:login, name, password})
   end
 
   @doc """
-  Unregistering client. This is the only way client's data can be wiped out. After unregistering a client
-  can register again under the same or different name. Returns :not_registered if client is not registered.
-  Returns :unregister if the unregistering is successful.
+  Unregisters the user that has been associated with the client. Unregistering is the
+  process of deleting the user and all of their data from the database. This also
+  dissociates the client from the user as the user doesn't exist anymore.
+  Possible responses are:
+    {:err, :not_bound} - if there's no user associated with the client
+    {:err, server_error} - for more info on possible errors refer to the server module
+    :ok - user was successfully unregistered
   """
+  @spec unregister(String.t()) :: {:err, atom()} | :ok
   def unregister(password) do
     Logger.info("Client is unregistering")
-    GenServer.call(:quiz_client, {:unregister, password})
+    GenServer.call(:dykm_client, {:unregister, password})
   end
 
   @doc """
-  Returns a map with all current invitations.
+  Lists all invitations that the user has recieved.
+  Possible responses are:
+    {:err, :not_bound} - if there's no user associated with the client
+    {:ok, [user_names]} - user was successfully unregistered
   """
+  @spec get_invitations() :: {:err, atom()} | {:ok, [String.t()]}
   def get_invitations() do
     Logger.info("Client is listing invitations")
 
-    GenServer.call(:quiz_client, :get_invitations)
+    GenServer.call(:dykm_client, :get_invitations)
   end
 
   @doc """
-  Obtain one's username.
+  Obtains one's username.
   """
+  @spec username() :: nil | String.t()
   def username() do
     Logger.info("Client is fetching their username")
 
-    GenServer.call(:quiz_client, :username)
+    GenServer.call(:dykm_client, :username)
   end
 
   @doc """
-  Obtain a question to be guessed by the user
+  Obtains a question to be guessed by the user.
+  Possible responses are:
+    {:err, :not_bound} - if there's no user associated with the client
+    {:err, :no_such_question} - if there's no question from the specified user
+    {:err, :invalid_format} - the question received from the server is not in the
+  expected format {question_number, question_answer}
+    {:err, server_error} - for more info on possible errors refer to the server module
+    {:ok, {question, question_answer}} - question was obtained
   """
+  @spec get_to_guess(String.t()) :: {:err, atom()} | {:ok, {question, String.t()}}
   def get_to_guess(other) do
     Logger.info("Client is fetching a question to guess from #{inspect(other)}")
 
-    GenServer.call(:quiz_client, {:get_to_guess, other})
+    GenServer.call(:dykm_client, {:get_to_guess, other})
   end
 
   @doc """
-  Obtain a question to be answered by the user
+  Obtains a question to be answered by the user.
+  Possible responses are:
+    {:err, :not_bound} - if there's no user associated with the client
+    {:err, :no_such_question} - if there's no question from the specified user
+    {:err, :invalid_format} - the question received from the server is not in the
+  expected format
+    {:err, server_error} - for more info on possible errors refer to the server module
+    {:ok, question} - question was obtained
   """
+  @spec get_to_answer(String.t()) :: {:err, atom()} | {:ok, question}
   def get_to_answer(other) do
-    GenServer.call(:quiz_client, {:get_to_answer, other})
+    GenServer.call(:dykm_client, {:get_to_answer, other})
   end
 
   @doc """
-  Obtain a question to be reviewed by the user
+  Obtains a guessed question to be reviewed by the user.
+  Possible responses are:
+    {:err, :not_bound} - if there's no user associated with the client
+    {:err, :no_such_question} - if there's no question from the specified user
+    {:err, :invalid_format} - the question received from the server is not in the
+  expected format {question_num, answer, guess}
+    {:err, server_error} - for more info on possible errors refer to the server module
+    {:ok, {question, ans, guess}} - question was obtained
   """
+  @spec get_to_see(String.t()) :: {:err, atom()} | {:ok, {question, String.t(), String.t()}}
   def get_to_see(other) do
-    GenServer.call(:quiz_client, {:get_to_see, other})
+    GenServer.call(:dykm_client, {:get_to_see, other})
   end
 
   @doc """
-  Sends invitation to `user`, doesn't wait for the response.
+  Sends an invitation to the specified user.
+  Possible responses are:
+    {:err, :not_bound} - if there's no user associated with the client
+    {:err, server_error} - for more info on possible errors refer to the server module
+    :ok - invitation was send
   """
+  @spec invite(String.t()) :: {:err, atom()} | :ok
   def invite(user) do
     Logger.info("Client is inviting #{user}")
-    GenServer.call(:quiz_client, {:invite, user})
+    GenServer.call(:dykm_client, {:invite, user})
   end
 
   @doc """
-  Declines an invitation froget_ratingm `from` if it exists.
+  Declines an invitation from another user.
+  Possible responses are:
+    {:err, :not_bound} - if there's no user associated with the client
+    {:err, :no_such_user} - if the specified user doesn't exist
+    {:err, server_error} - for more info on possible errors refer to the server module
+    :ok - the invitation was declined
   """
+  @spec decline(String.t()) :: {:err, atom()} | :ok
   def decline(from) do
     Logger.info("Client is declining #{from}'s invitation")
-    GenServer.call(:quiz_client, {:decline, from})
+    GenServer.call(:dykm_client, {:decline, from})
   end
 
   @doc """
-  Accepts an invitation from `from` if it exists.
+  Accepts an invitation from another user.
+  Possible responses are:
+    {:err, :not_bound} - if there's no user associated with the client
+    {:err, :no_such_user} - if the specified user doesn't exist
+    {:err, server_error} - for more info on possible errors refer to the server module
+    :ok - the invitation was accepted
   """
+  @spec accept(String.t()) :: {:err, atom()} | :ok
   def accept(from) do
     Logger.info("Client is accepting #{from}'s invitation")
-    GenServer.call(:quiz_client, {:accept, from})
+    GenServer.call(:dykm_client, {:accept, from})
   end
 
   @doc """
-  Obtain scores with user `with_user`
+  Obtains scores with the specified user. A score is a float number representing
+  a percentage of successfully guessed questions on each side.
+  Possible responses are:
+    {:err, :not_bound} - if there's no user associated with the client
+    {:err, server_error} - for more info on possible errors refer to the server module
+    {:ok, score1, score2} - score was obtained
   """
+  @spec get_score(String.t()) :: {:err, atom()} | {:ok, float(), float()}
   def get_score(with_user) do
     Logger.info("Client is fetching scores with #{with_user}")
-    GenServer.call(:quiz_client, {:get_score, with_user})
+    GenServer.call(:dykm_client, {:get_score, with_user})
   end
 
   @doc """
-  List all registered users
+  Lists all registered users, ignoring the associated user.
+  Possible responses are:
+    {:err, :not_bound} - if there's no user associated with the client
+    {:err, server_error} - for more info on possible errors refer to the server module
+    {:ok, user_list} - list was obtained
   """
+  @spec list_registered :: {:err, atom()} | {:ok, [String.t()]}
   def list_registered() do
     Logger.info("Client is listing all registered clients")
-    who_am_i = username()
+    self_name = username()
 
-    with {:ok, list} <- GenServer.call(:quiz_client, :list_registered) do
-      {:ok, Enum.filter(list, fn user -> user != who_am_i end)}
+    with {:ok, list} <- GenServer.call(:dykm_client, :list_registered) do
+      {:ok, Enum.filter(list, fn user -> user != self_name end)}
     else
-      reason -> {:err, reason}
+      error -> error
     end
   end
 
   @doc """
-  Lists all users that are playing with the current user
+  Lists all users for which there is a game with the associated user.
+  Possible responses are:
+    {:err, :not_bound} - if there's no user associated with the client
+    {:err, server_error} - for more info on possible errors refer to the server module
+    {:ok, user_list} - list was obtained
   """
+  @spec list_related :: {:err, atom()} | {:ok, [String.t()]}
   def list_related() do
     Logger.info("Client is listing all clients they're playing with")
-    who_am_i = username()
-
-    with {:ok, list} <- GenServer.call(:quiz_client, :list_related) do
-      {:ok, Enum.filter(list, fn user -> user != who_am_i end)}
-    else
-      reason -> {:err, reason}
-    end
+    GenServer.call(:dykm_client, :list_related)
   end
 
   @doc """
-  Gives answer to question sent from `other`. Answer should be :a, :b, :c.
-
+  Gives answer to question sent from the speicified user.
+  Answer must be "a", "b" or "c".
+  Possible responses are:
+    {:err, :not_bound} - if there's no user associated with the client
+    {:err, :no_such_question} - if there's no question from the specified user
+    {:err, :invalid_format} - if the answer is not in the correct format
+    {:err, server_error} - for more info on possible errors refer to the server module
+    :ok - question was answered successfully
   """
+  @spec give_answer(String.t(), String.t()) :: {:err, atom()} | :ok
   def give_answer(other, answer) do
     Logger.info("Client's answer for #{other}'s question is #{answer}")
-    GenServer.call(:quiz_client, {:answer, other, answer})
+    GenServer.call(:dykm_client, {:answer, other, answer})
   end
 
   @doc """
-  Gives guess to question answered from `other`. Answer should be :a, :b, :c.
+  Gives guess to question answered by the speicified user.
+  Guess must be "a", "b" or "c".
+  Possible responses are:
+    {:err, :not_bound} - if there's no user associated with the client
+    {:err, :no_such_question} - if there's no question from the specified user
+    {:err, :invalid_format} - if the guess is not in the correct format
+    {:err, server_error} - for more info on possible errors refer to the server module
+    :ok - question was guessed successfully
   """
+  @spec give_guess(String.t(), String.t()) :: {:err, atom()} | {:ok, boolean()}
   def give_guess(other, guess) do
     Logger.info("Client's guess for #{other}'s question is #{guess}")
-    GenServer.call(:quiz_client, {:guess, other, guess})
+    GenServer.call(:dykm_client, {:guess, other, guess})
   end
 
+  @doc """
+  Used by the server. Not to be used by 3rd parties.
+  """
   @impl Client.Behaviour
   def cast_invitation(client, from) do
     GenServer.cast(client, {:add_invitation, from})
   end
 
+  @doc """
+  Used by the server. Not to be used by 3rd parties.
+  """
   @impl Client.Behaviour
   def cast_to_answer(client, from, q_num) do
     GenServer.cast(client, {:add_question, q_num, from})
   end
 
+  @doc """
+  Used by the server. Not to be used by 3rd parties.
+  """
   @impl Client.Behaviour
   def cast_to_guess(client, from, q_num, answer) do
     GenServer.cast(client, {:add_guess, from, q_num, answer})
   end
 
+  @doc """
+  Used by the server. Not to be used by 3rd parties.
+  """
   @impl Client.Behaviour
   def cast_to_see(client, from, q_num, answer, guess) do
     GenServer.cast(client, {:add_result, from, q_num, answer, guess})
@@ -200,7 +311,7 @@ defmodule Client.Worker do
   Starts the server process.
   """
   def start_link() do
-    GenServer.start_link(__MODULE__, nil, name: :quiz_client)
+    GenServer.start_link(__MODULE__, nil, name: :dykm_client)
   end
 
   @doc """
@@ -211,68 +322,66 @@ defmodule Client.Worker do
     {:ok, State.new()}
   end
 
-  @doc """
-  Called when the user wants to register under name `username`. Once the user is registered he/she is
-  associated with this username and it cannot be changed.
-  Returns :taken if `username` is already taken. Retunrs :already_registered if user is already
-  registered under different username. Returns :registered otherwise.
-  """
   @impl true
   def handle_call({:register, _, _}, _, state = %State{username: name}) when not is_nil(name) do
-    {:reply, :already_registered, state}
+    {:reply, {:err, :already_bound}, state}
   end
 
   def handle_call({:register, username, pass}, _from, state) do
     if valid_password?(pass) and valid_username?(username) do
-      {:reply, server_module().register(username, pass), Map.put(state, :username, username)}
+      with :ok <- server_module().register(username, pass) do
+        {:reply, :ok, State.set_username(state, username)}
+      else
+        reason -> {:reply, {:err, reason}, state}
+      end
     else
-      {:reply, :invalid_format, state}
+      {:reply, {:err, :invalid_format}, state}
     end
   end
 
   def handle_call({:login, _, _}, _, state = %State{username: name}) when not is_nil(name) do
-    {:reply, :already_registered, state}
+    {:reply, {:err, :already_bound}, state}
   end
 
   def handle_call({:login, username, pass}, _from, state) do
     if valid_password?(pass) and valid_username?(username) do
-      {:reply, server_module().login(username, pass), Map.put(state, :username, username)}
+      with :ok <- server_module().login(username, pass) do
+        {:reply, :ok, State.set_username(state, username)}
+      else
+        reason -> {:reply, {:err, reason}, state}
+      end
     else
-      {:reply, :invalid_format, state}
+      {:reply, {:err, :invalid_format}, state}
     end
   end
 
-  @doc """
-  Called when the user wants to unregister. Returns :not_registered if the client hadn't been registered.
-  Returns :unregistered otherwise.
-  """
   def handle_call({:unregister, _pass}, _, state = %State{username: nil}) do
-    {:reply, :not_registered, state}
+    {:reply, {:err, :not_bound}, state}
   end
 
-  def handle_call({:unregister, pass}, _from, _state) do
-    {:reply, server_module().unregister(pass), State.new()}
+  def handle_call({:unregister, pass}, _from, state) do
+    with :ok <- server_module().unregister(pass) do
+      {:reply, :ok, State.new()}
+    else
+      reason ->
+        {:reply, {:err, reason}, state}
+    end
   end
 
-  @doc """
-  Returns map of all invitations sent from other clients.
-  """
   def handle_call(:get_invitations, _, state) do
-    {:reply, State.get_invitations(state), state}
+    if State.get_username(state) == nil do
+      {:reply, {:err, :not_bound}, state}
+    else
+      {:reply, {:ok, State.get_invitations(state)}, state}
+    end
   end
 
-  @doc """
-  Returns client's username if they're registered.
-  """
   def handle_call(:username, _from, state) do
     {:reply, State.get_username(state), state}
   end
 
-  @doc """
-  If `from` is a registered user, returns {question, a, b, c} where a,b and c are the possible answer.
-  Returns :error otherwise.
-  """
-  def handle_call({:get_to_guess, other_user}, _, state) do
+  def handle_call({:get_to_guess, other_user}, _, %State{username: name} = state)
+      when not is_nil(name) do
     with {q_num, q_answer} <- State.get_to_guess(state, other_user),
          {:ok, question} <- fetch_question(q_num) do
       {:reply, {:ok, {question, q_answer}}, state}
@@ -300,11 +409,12 @@ defmodule Client.Worker do
     end
   end
 
-  @doc """
-  If `from` is a registered user, returns {question, a, b, c} where a,b and c are the possible answer.
-  Returns :error otherwise.
-  """
-  def handle_call({:get_to_answer, other_user}, _, state) do
+  def handle_call({:get_to_guess, _other_user}, _, state) do
+    {:reply, {:err, :not_bound}, state}
+  end
+
+  def handle_call({:get_to_answer, other_user}, _, %State{username: name} = state)
+      when not is_nil(name) do
     with q_num when is_integer(q_num) <- State.get_to_answer(state, other_user),
          {:ok, question} <- fetch_question(q_num) do
       {:reply, {:ok, question}, state}
@@ -332,11 +442,12 @@ defmodule Client.Worker do
     end
   end
 
-  @doc """
-  If `from` is a registered user, returns {question, your_answer, others_guess}.
-  Returns :error otherwise.
-  """
-  def handle_call({:get_to_see, other_user}, _, state) do
+  def handle_call({:get_to_answer, _other_user}, _, state) do
+    {:reply, {:err, :not_bound}, state}
+  end
+
+  def handle_call({:get_to_see, other_user}, _, %State{username: name} = state)
+      when not is_nil(name) do
     with {q_num, q_ans, q_guess} <- State.get_to_see(state, other_user),
          {:ok, question} <- fetch_question(q_num) do
       {:reply, {:ok, {question, q_ans, q_guess}}, state}
@@ -364,30 +475,53 @@ defmodule Client.Worker do
     end
   end
 
-  @doc """
-  Returns {per1, per2} - current game state between `user1` and `user2` where per1 and per2 are the
-  according percentages of right guessed questions for every user.
-  """
-  def handle_call({:get_score, with_other}, _, state) do
-    {:reply, server_module().get_score(with_other), state}
+  def handle_call({:get_to_see, _other_user}, _, state) do
+    {:reply, {:err, :not_bound}, state}
   end
 
-  @doc """
-  Returns list of all registered clients
-  """
+  def handle_call({:get_score, with_other}, _, %State{username: name} = state)
+      when not is_nil(name) do
+    with {:ok, _, _} = res <- server_module().get_score(with_other) do
+      {:reply, res, state}
+    else
+      reason -> {:reply, {:err, reason}, state}
+    end
+  end
+
+  def handle_call({:get_score, _}, _, state) do
+    {:reply, {:err, :not_bound}, state}
+  end
+
+  def handle_call(:list_registered, _, %State{username: name} = state) when not is_nil(name) do
+    with {:ok, list} <- server_module().list_users() do
+      {:reply, {:ok, list}, state}
+    else
+      reason ->
+        {:reply, {:err, reason}, state}
+    end
+  end
+
   def handle_call(:list_registered, _, state) do
-    {:reply, server_module().list_users(), state}
+    {:reply, {:err, :not_bound}, state}
+  end
+
+  def handle_call(:list_related, _, %State{username: name} = state) when not is_nil(name) do
+    with {:ok, list} <- server_module().list_related() do
+      {:reply, {:ok, list}, state}
+    else
+      reason ->
+        {:reply, {:err, reason}, state}
+    end
   end
 
   def handle_call(:list_related, _, state) do
-    {:reply, server_module().list_related(), state}
+    {:reply, {:err, :not_bound}, state}
   end
 
-  @doc """
-  Returns true if the client has given correct answer.
-  Returns false if the client has g2iven wrong answer.
-  Returns :error if `from` is not registered or `guess` is not :a, :b or :c.
-  """
+  def handle_call({:guess, _, _}, _, %State{username: nil} = state) do
+    {:reply, {:err, :not_bound}, state}
+  end
+
   def handle_call({:guess, from, guess}, _, state)
       when guess == "a" or guess == "b" or guess == "c" do
     case State.get_to_guess(state, from) do
@@ -409,10 +543,10 @@ defmodule Client.Worker do
     {:reply, {:err, :invalid_format}, state}
   end
 
-  @doc """
-  If answer is :a, :b or :c and to is name the client is currently playing with, sends the answer
-  to server.
-  """
+  def handle_call({:answer, _, _}, _, %State{username: nil} = state) do
+    {:reply, {:err, :not_bound}, state}
+  end
+
   def handle_call({:answer, from, answer}, _, state)
       when answer == "a" or answer == "b" or answer == "c" do
     case State.get_to_answer(state, from) do
@@ -432,17 +566,19 @@ defmodule Client.Worker do
     {:reply, {:err, :invalid_format}, state}
   end
 
-  @doc """
-  Called when user wants to start new game with `to`.
-  """
-  def handle_call({:invite, to}, _, state) do
-    {:reply, server_module().invite(to), state}
+  def handle_call({:invite, to}, _, %State{username: name} = state) when not is_nil(name) do
+    with :ok <- server_module().invite(to) do
+      {:reply, :ok, state}
+    else
+      reason -> {:reply, {:err, reason}, state}
+    end
   end
 
-  @doc """
-  Called when user has received an invitation from `from` and wants accept it.
-  """
-  def handle_call({:accept, from}, _, state) do
+  def handle_call({:invite, _}, _, state) do
+    {:reply, {:err, :not_bound}, state}
+  end
+
+  def handle_call({:accept, from}, _, %State{username: name} = state) when not is_nil(name) do
     if from in State.get_invitations(state) do
       with :ok <- server_module().accept(from) do
         {:reply, :ok, State.remove_invitation(state, from)}
@@ -454,10 +590,11 @@ defmodule Client.Worker do
     end
   end
 
-  @doc """
-  Called when user has received an invitation from `from` and wants decline it.
-  """
-  def handle_call({:decline, from}, _, state) do
+  def handle_call({:accept, _}, _, state) do
+    {:reply, {:err, :not_bound}, state}
+  end
+
+  def handle_call({:decline, from}, _, %State{username: name} = state) when not is_nil(name) do
     if from in State.get_invitations(state) do
       with :ok <- server_module().decline(from) do
         {:reply, :ok, State.remove_invitation(state, from)}
@@ -469,32 +606,23 @@ defmodule Client.Worker do
     end
   end
 
+  def handle_call({:decline, _}, _, state) do
+    {:reply, {:err, :not_bound}, state}
+  end
 
-  @doc """
-  Called when server sends question for user to answer.
-  """
   @impl true
   def handle_cast({:add_question, q, from}, state) do
     {:noreply, State.put_to_answer(state, from, q)}
   end
 
-  @doc """
-  Called when server sends question for user to guess.
-  """
   def handle_cast({:add_guess, from, question, ans}, state) do
     {:noreply, State.put_to_guess(state, from, {question, ans})}
   end
 
-  @doc """
-  Called when server sends question that another user tried to guess.
-  """
   def handle_cast({:add_result, from, question, ans, guess}, state) do
     {:noreply, State.put_to_see(state, from, {question, ans, guess})}
   end
 
-  @doc """
-  Called when `from` wants to start new game.
-  """
   def handle_cast({:add_invitation, from}, state) do
     {:noreply, State.add_invitation(state, from)}
   end
