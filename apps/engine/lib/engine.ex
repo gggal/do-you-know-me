@@ -3,7 +3,6 @@ defmodule Engine.Application do
   Server Application
 
   """
-  # TODO rename to engine
   use Application
   require Logger
 
