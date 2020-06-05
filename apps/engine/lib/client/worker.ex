@@ -311,7 +311,12 @@ defmodule Client.Worker do
   Starts the server process.
   """
   def start_link() do
-    GenServer.start_link(__MODULE__, nil, name: :dykm_client)
+    with :ok <- verify_start() do
+      GenServer.start_link(__MODULE__, nil, name: :dykm_client)
+    else
+      {:err, reason} ->
+        raise "Couldn't start client: #{reason}"
+    end
   end
 
   @doc """
@@ -628,6 +633,27 @@ defmodule Client.Worker do
   end
 
   # PRIVATE#
+
+
+  defp verify_start do
+    with {:ok, _} <- start_node(),
+         true <- Node.connect(:"server@127.0.0.1") do
+      :ok
+    else
+      {:err, _} -> {:err, :failed_to_start_node}
+      false -> {:err, :failed_to_connect_to_server_node}
+      :ignored -> {:err, :failed_to_start_node}
+      _ -> {:err, :unexpected}
+    end
+  end
+
+  defp start_node do
+    if node() == :nonode@nohost do
+      Node.start(:"#{:rand.uniform(999_999_999_999)}@127.0.0.1")
+    else
+      {:ok, :already_started}
+    end
+  end
 
   defp fetch_question(question_number) when is_integer(question_number) do
     try do
