@@ -1,0 +1,51 @@
+09:52:34.430 [info] Application cli exited: CLI.Application.start(:normal, []) returned an error: shutdown: failed to start child: Client.Worker
+    ** (EXIT) an exception was raised:
+        ** (UndefinedFunctionError) function Mix.env/0 is undefined (module Mix is not available)
+            Mix.env()
+            lib/client/worker.ex:314: Client.Worker.start_link/0
+            (stdlib 3.12.1) supervisor.erl:379: :supervisor.do_start_child_i/3
+            (stdlib 3.12.1) supervisor.erl:365: :supervisor.do_start_child/2
+            (stdlib 3.12.1) supervisor.erl:349: anonymous fn/3 in :supervisor.start_children/2
+            (stdlib 3.12.1) supervisor.erl:1157: :supervisor.children_map/4
+            (stdlib 3.12.1) supervisor.erl:315: :supervisor.init_children/2
+            (stdlib 3.12.1) gen_server.erl:374: :gen_server.init_it/2
+09:52:34.433 [info] Application poison exited: :stopped
+09:52:34.433 [info] Application observer exited: :stopped
+10:10:38.750 [info] Application cli exited: CLI.Application.start(:normal, []) returned an error: shutdown: failed to start child: Client.Worker
+    ** (EXIT) an exception was raised:
+        ** (RuntimeError) Couldn't start client: failed_to_find_server_process
+            lib/client/worker.ex:329: Client.Worker.start_link/0
+            (stdlib 3.12.1) supervisor.erl:379: :supervisor.do_start_child_i/3
+            (stdlib 3.12.1) supervisor.erl:365: :supervisor.do_start_child/2
+            (stdlib 3.12.1) supervisor.erl:349: anonymous fn/3 in :supervisor.start_children/2
+            (stdlib 3.12.1) supervisor.erl:1157: :supervisor.children_map/4
+            (stdlib 3.12.1) supervisor.erl:315: :supervisor.init_children/2
+            (stdlib 3.12.1) gen_server.erl:374: :gen_server.init_it/2
+            (stdlib 3.12.1) gen_server.erl:342: :gen_server.init_it/6
+11:55:10.039 [info] Application cli exited: CLI.Application.start(:normal, []) returned an error: shutdown: failed to start child: Client.Worker
+    ** (EXIT) an exception was raised:
+        ** (RuntimeError) Couldn't start client: failed_to_connect_to_server_node
+            lib/client/worker.ex:318: Client.Worker.start_link/0
+            (stdlib 3.12.1) supervisor.erl:379: :supervisor.do_start_child_i/3
+            (stdlib 3.12.1) supervisor.erl:365: :supervisor.do_start_child/2
+            (stdlib 3.12.1) supervisor.erl:349: anonymous fn/3 in :supervisor.start_children/2
+            (stdlib 3.12.1) supervisor.erl:1157: :supervisor.children_map/4
+            (stdlib 3.12.1) supervisor.erl:315: :supervisor.init_children/2
+            (stdlib 3.12.1) gen_server.erl:374: :gen_server.init_it/2
+            (stdlib 3.12.1) gen_server.erl:342: :gen_server.init_it/6
+11:55:10.040 [info] Application poison exited: :stopped
+11:55:10.040 [info] Application observer exited: :stopped
+16:55:26.682 [info] Client is logging in
+16:56:37.122 [info] Client is logging in
+17:04:16.041 [info] Client is logging in
+17:04:38.711 [info] Client for asd is registering
+08:21:01.874 [info] Client for asd is registering
+08:21:19.075 [info] Client for dsa is registering
+08:21:35.441 [info] Client is logging in
+08:23:37.579 [info] Client is logging in
+08:24:22.521 [info] Client is logging in
+08:26:02.606 [info] Client is listing invitations
+16:53:04.216 [info] Client is logging in
+18:46:36.398 [info] Client is listing invitations
+18:47:22.132 [info] Client is logging in
+18:47:24.064 [info] Client is listing invitations
