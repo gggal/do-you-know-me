@@ -1,4 +1,0 @@
-Server.Invitation |> DB.Repo.get_by(%{from: "a", to: "b"}) |> DB.Repo.delete()
-
-
-GenServer.call({:global, :quiz_server}, :dump)
