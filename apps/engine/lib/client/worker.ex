@@ -38,6 +38,18 @@ defmodule Client.Worker do
   # __________API__________#
 
   @doc """
+  Starts the server process.
+  """
+  def start_link() do
+    with :ok <- verify_start() do
+      GenServer.start_link(__MODULE__, nil, name: :dykm_client)
+    else
+      {:err, reason} ->
+        raise "Couldn't start client: #{reason}"
+    end
+  end
+
+  @doc """
   Registers the client by creating new user. Registration is a one-time event. It's
   possible to register for the second time only if the client has been unregistered
   beforehand.
@@ -306,18 +318,6 @@ defmodule Client.Worker do
   end
 
   # __________Callbacks__________#
-
-  @doc """
-  Starts the server process.
-  """
-  def start_link() do
-    with :ok <- verify_start() do
-      GenServer.start_link(__MODULE__, nil, name: :dykm_client)
-    else
-      {:err, reason} ->
-        raise "Couldn't start client: #{reason}"
-    end
-  end
 
   @doc """
   Initializes the server.
