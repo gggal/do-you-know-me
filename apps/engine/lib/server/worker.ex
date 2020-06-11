@@ -273,7 +273,7 @@ defmodule Server.Worker do
   def handle_call({:accept, to}, {client_pid, _}, state) do
     with {:ok, from} <- get_valid_username(client_pid, state),
          :ok <- valid_accept_decline_input?(from, to) do
-      if start_game_helper(from, to, state) do
+      if start_game_helper(to, from, state) do
         {:reply, :ok, state}
       else
         {:reply, :db_error, state}
@@ -351,7 +351,7 @@ defmodule Server.Worker do
 
   defp invite_helper(from, to, state) do
     if invitation_model().exists?(to, from) do
-      start_game_helper(from, to, state)
+      start_game_helper(to, from, state)
     else
       send_user(to, state, :cast_invitation, [from])
       invitation_model().insert(from, to)

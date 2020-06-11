@@ -589,7 +589,7 @@ defmodule Client.WorkerTest do
 
   describe "methods for the server to call" do
     test "casted invitations have to be added to the internal state" do
-      Worker.cast_invitation(:dykm_client, "some_name")
+      Worker.cast_invitation(node(), "some_name")
 
       assert true ==
                :sys.get_state(:dykm_client)
@@ -598,7 +598,7 @@ defmodule Client.WorkerTest do
     end
 
     test "casted 'answer' questions have to be added to the internal state" do
-      Worker.cast_to_answer(:dykm_client, "some_name", 0)
+      Worker.cast_to_answer(node(), "some_name", 0)
 
       assert 0 ==
                :sys.get_state(:dykm_client)
@@ -606,7 +606,7 @@ defmodule Client.WorkerTest do
     end
 
     test "casted 'guess' questions have to be added to the internal state" do
-      Worker.cast_to_guess(:dykm_client, "some_name", 0, "a")
+      Worker.cast_to_guess(node(), "some_name", 0, "a")
 
       assert {0, "a"} ==
                :sys.get_state(:dykm_client)
@@ -614,7 +614,7 @@ defmodule Client.WorkerTest do
     end
 
     test "casted 'see' questions have to be added to the internal state" do
-      Worker.cast_to_see(:dykm_client, "some_name", 0, "a", "b")
+      Worker.cast_to_see(node(), "some_name", 0, "a", "b")
 
       assert {0, "a", "b"} ==
                :sys.get_state(:dykm_client)
