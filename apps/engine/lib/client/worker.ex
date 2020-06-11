@@ -634,7 +634,6 @@ defmodule Client.Worker do
 
   # PRIVATE#
 
-
   defp verify_start do
     with {:ok, _} <- start_node(),
          true <- Node.connect(:"server@127.0.0.1") do
