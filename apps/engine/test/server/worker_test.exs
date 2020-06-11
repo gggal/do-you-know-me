@@ -519,6 +519,13 @@ defmodule Server.WorkerTest do
       assert :db_error = call_server(node2(), :get_score, ["username1"])
     end
 
+    test "getting score when the game has just begun" do
+      ScoreMock |> expect(:get_misses, 2, fn _ -> {:ok, 0} end)
+      ScoreMock |> expect(:get_hits, 2, fn _ -> {:ok, 0} end)
+
+      assert {:ok, 0.0, 0.0} = call_server(node2(), :get_score, ["username1"])
+    end
+
     test "getting score successfully" do
       assert {:ok, 25.0, 25.0} = call_server(node2(), :get_score, ["username1"])
     end

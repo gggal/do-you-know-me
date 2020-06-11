@@ -330,7 +330,11 @@ defmodule Server.Worker do
     with {:ok, score_id} <- game_model().get_score({user, other}, user),
          {:ok, hits} when not is_nil(hits) <- score_model().get_hits(score_id),
          {:ok, misses} when not is_nil(misses) <- score_model().get_misses(score_id) do
-      {:ok, Float.round(hits * 100 / (hits + misses), 2)}
+          if hits + misses > 0 do
+            {:ok, Float.round(hits * 100 / (hits + misses), 2)}
+          else
+            {:ok, 0.00}
+          end
     else
       _ -> {:err, :db_error}
     end
