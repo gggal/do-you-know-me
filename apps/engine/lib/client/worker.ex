@@ -290,7 +290,7 @@ defmodule Client.Worker do
   """
   @impl Client.Behaviour
   def cast_invitation(client, from) do
-    GenServer.cast(client, {:add_invitation, from})
+    GenServer.cast({:dykm_client, client}, {:add_invitation, from})
   end
 
   @doc """
@@ -298,7 +298,7 @@ defmodule Client.Worker do
   """
   @impl Client.Behaviour
   def cast_to_answer(client, from, q_num) do
-    GenServer.cast(client, {:add_question, q_num, from})
+    GenServer.cast({:dykm_client, client}, {:add_question, q_num, from})
   end
 
   @doc """
@@ -306,7 +306,7 @@ defmodule Client.Worker do
   """
   @impl Client.Behaviour
   def cast_to_guess(client, from, q_num, answer) do
-    GenServer.cast(client, {:add_guess, from, q_num, answer})
+    GenServer.cast({:dykm_client, client}, {:add_guess, from, q_num, answer})
   end
 
   @doc """
@@ -314,7 +314,7 @@ defmodule Client.Worker do
   """
   @impl Client.Behaviour
   def cast_to_see(client, from, q_num, answer, guess) do
-    GenServer.cast(client, {:add_result, from, q_num, answer, guess})
+    GenServer.cast({:dykm_client, client}, {:add_result, from, q_num, answer, guess})
   end
 
   # __________Callbacks__________#
