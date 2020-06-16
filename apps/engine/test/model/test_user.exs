@@ -125,7 +125,8 @@ defmodule Server.UserTest do
              question1: q1_id,
              question2: q2_id,
              score1: s1_id,
-             score2: s2_id
+             score2: s2_id,
+             turn: false
            }
            |> DB.Repo.insert()
            |> elem(0) == :ok

@@ -75,17 +75,6 @@ defmodule Server.Worker do
   end
 
   @doc """
-  Lists all users (online or not) the user is currently playing with.
-  Possible responses are:
-    :unauthenticated - if the client hadn't been logged in
-    :{ok, list} - otherwise
-  """
-  @impl Server.Behaviour
-  def list_related() do
-    GenServer.call(self_pid(), :list_related)
-  end
-
-  @doc """
   The user is sending invitation to user `to`. If `to` had previously sent an
   invitation to the user, the game assumes that they both want to play and an
   invitation wont be send, instead they will start playing. Possible responses are:
@@ -165,11 +154,25 @@ defmodule Server.Worker do
     :no_such_user - if user `from` doesn't exist
     :no_such_game - if there's no game for these users
     :db_error - internal db error occurred
-    {:ok. score1, score2} - score1 is the user's score and score2 is `other`'s score
+    {:ok, score1, score2} - score1 is the user's score and score2 is `other`'s score
   """
   @impl Server.Behaviour
   def get_score(other) do
     GenServer.call(self_pid(), {:get_score, other})
+  end
+
+  @doc """
+  The user is checking if it is their turn to play with `other`.
+  Possible responses are:
+    :unauthenticated - if the client hadn't been logged in
+    :no_such_user - if user `from` doesn't exist
+    :no_such_game - if there's no game for these users
+    :db_error - internal db error occurred
+    {:ok, turn} - true if it's user's turn to play, false otherwise
+  """
+  @impl Server.Behaviour
+  def get_turn(other) do
+    GenServer.call(self_pid(), {:get_turn, other})
   end
 
   # __________Callbacks__________#
@@ -252,14 +255,6 @@ defmodule Server.Worker do
     end
   end
 
-  def handle_call(:list_related, {client_pid, _}, state) do
-    with {:ok, name} <- get_valid_username(client_pid, state) do
-      {:reply, {:ok, game_model().all_related(name)}, state}
-    else
-      _ -> {:reply, :unauthenticated, state}
-    end
-  end
-
   def handle_call({:invite, to}, {client_pid, _}, state) do
     with {:ok, from} <- get_valid_username(client_pid, state),
          :ok <- valid_invite_input?(from, to) do
@@ -313,12 +308,27 @@ defmodule Server.Worker do
 
   def handle_call({:get_score, other}, {client_pid, _}, state) do
     with {:ok, user} <- get_valid_username(client_pid, state),
-         :ok <- valid_score_input?(other, user),
+         :ok <- valid_score_turn_input?(other, user),
          {:ok, res1} <- get_score_percentage(user, other),
          {:ok, res2} <- get_score_percentage(other, user) do
       {:reply, {:ok, res1, res2}, state}
     else
       {:err, reason} -> {:reply, reason, state}
+    end
+  end
+
+  def handle_call({:get_turn, other}, {client_pid, _}, state) do
+    with {:ok, user} <- get_valid_username(client_pid, state),
+         :ok <- valid_score_turn_input?(other, user),
+         {:ok, next_to_play} <- game_model().get_turn(user, other) do
+      {:reply, {:ok, next_to_play == user}, state}
+    else
+      {:err, reason} ->
+        {:reply, reason, state}
+
+      :err ->
+        # get_turn failed -> db is in inconsistent state
+        {:reply, :db_error, state}
     end
   end
 
@@ -330,11 +340,11 @@ defmodule Server.Worker do
     with {:ok, score_id} <- game_model().get_score({user, other}, user),
          {:ok, hits} when not is_nil(hits) <- score_model().get_hits(score_id),
          {:ok, misses} when not is_nil(misses) <- score_model().get_misses(score_id) do
-          if hits + misses > 0 do
-            {:ok, Float.round(hits * 100 / (hits + misses), 2)}
-          else
-            {:ok, 0.00}
-          end
+      if hits + misses > 0 do
+        {:ok, Float.round(hits * 100 / (hits + misses), 2)}
+      else
+        {:ok, 0.00}
+      end
     else
       _ -> {:err, :db_error}
     end
@@ -343,8 +353,7 @@ defmodule Server.Worker do
   defp guess_question_helper(from, to, guess, state) do
     with {:ok, old_question} when not is_nil(old_question) <- get_q_number({from, to}, from),
          {:ok, answer} <- get_q_answer({from, to}, from),
-         true <- game_model().guess_question({from, to}, from, guess),
-         {:ok, guess} <- get_q_guess({from, to}, from) do
+         true <- game_model().guess_question({from, to}, from, guess) do
       send_user(from, state, :cast_to_see, [to, old_question, answer, guess])
 
       :ok
@@ -363,7 +372,7 @@ defmodule Server.Worker do
   end
 
   defp start_game_helper(from, to, state) do
-    if game_model().start(from, to) do
+    if game_model().start(from, to, to) do
       {:ok, q1} = get_q_number({from, to}, from)
       {:ok, q2} = get_q_number({from, to}, to)
       send_user(from, state, :cast_to_answer, [to, q1])
@@ -375,11 +384,11 @@ defmodule Server.Worker do
   end
 
   defp answer_question_helper(from, to, answer, state) do
-    with {:ok, old_question} <- get_q_number({from, to}, from),
-         true <- game_model().answer_question({from, to}, from, answer),
-         {:ok, new_question} <- get_q_number({from, to}, from) do
+    with {:ok, prev_question} <- get_new_q_number({from, to}, to),
+         true <- game_model().answer_question({from, to}, to, answer),
+         {:ok, new_question} <- get_new_q_number({from, to}, to) do
       send_user(to, state, :cast_to_answer, [from, new_question])
-      send_user(from, state, :cast_to_guess, [to, old_question, answer])
+      send_user(from, state, :cast_to_guess, [to, prev_question, answer])
 
       :ok
     else
@@ -392,24 +401,42 @@ defmodule Server.Worker do
       send_user(user, state, :cast_invitation, [other])
     end
 
+    Logger.error("list related:")
+
     for other <- game_model().all_related(user) do
-      with {:ok, q1} <- game_model().get_question({user, other}, user),
-           {:ok, q2} <- game_model().get_question({user, other}, other),
+      Logger.error("related #{other}")
+
+      with {:ok, new_q1} <- game_model().get_question({user, other}, user),
+           {:ok, q1} <- game_model().get_old_question({user, other}, user),
+           {:ok, q2} <- game_model().get_old_question({user, other}, other),
+           {:ok, new_q1_num} <- question_model().get_question_number(new_q1),
            {:ok, q1_num} <- question_model().get_question_number(q1),
            {:ok, q1_answer} <- question_model().get_question_answer(q1),
            {:ok, q1_guess} <- question_model().get_question_guess(q1),
            {:ok, q2_num} <- question_model().get_question_number(q2),
            {:ok, q2_answer} <- question_model().get_question_answer(q2),
            {:ok, q2_guess} <- question_model().get_question_guess(q2) do
+        Logger.error("my question #{q1}
+           #{other}'s question #{q2}
+           my number #{q1_num},
+           #{other}'s number #{q2_num}
+           my answer #{q1_answer},
+           #{other}'s answer #{q2_answer},
+           my guess #{q1_guess},
+           #{other}'s question #{q2_guess}")
+
         if is_nil(q1_answer) do
-          send_user(user, state, :cast_to_answer, [other, q1_num])
+          Logger.error("1 #{other}")
+          send_user(user, state, :cast_to_answer, [other, new_q1_num])
         end
 
         if not is_nil(q2_answer) and is_nil(q2_guess) do
+          Logger.error("2 #{other}")
           send_user(user, state, :cast_to_guess, [other, q2_num, q2_answer])
         end
 
         if not is_nil(q1_answer) and not is_nil(q1_guess) do
+          Logger.error("3 #{other}")
           send_user(user, state, :cast_to_see, [other, q1_num, q1_answer, q1_guess])
         end
       end
@@ -463,7 +490,7 @@ defmodule Server.Worker do
     end
   end
 
-  defp valid_score_input?(other, user) do
+  defp valid_score_turn_input?(other, user) do
     cond do
       not user_model().exists?(other) -> {:err, :no_such_user}
       not game_model().exists?(other, user) -> {:err, :no_such_game}
@@ -478,6 +505,14 @@ defmodule Server.Worker do
   end
 
   defp get_q_number({user1, user2}, user) do
+    with {:ok, q_id} <- game_model().get_old_question({user1, user2}, user) do
+      question_model().get_question_number(q_id)
+    else
+      _ -> :err
+    end
+  end
+
+  defp get_new_q_number({user1, user2}, user) do
     with {:ok, q_id} <- game_model().get_question({user1, user2}, user) do
       question_model().get_question_number(q_id)
     else

@@ -220,18 +220,6 @@ defmodule Server.WorkerTest do
     end
   end
 
-  describe "list related users" do
-    test "try listing related users from not logged in client" do
-      assert :unauthenticated == call_server(node1(), :list_related, [])
-    end
-
-    test "list related users successfully" do
-      to_return = ["user1", "user2", "user3"]
-      GameMock |> expect(:all_related, fn _ -> to_return end)
-      assert {:ok, to_return} == call_server(node2(), :list_related, [])
-    end
-  end
-
   describe "invite" do
     test "try sending invitation from not logged in client" do
       assert :unauthenticated == call_server(node1(), :invite, ["username"])
@@ -267,7 +255,7 @@ defmodule Server.WorkerTest do
     test "users invite each other but starting game fails" do
       stub_invite_user()
       InvitationMock |> expect(:exists?, 2, fn from, _sto -> from == "username2" end)
-      GameMock |> expect(:start, fn _, _ -> false end)
+      GameMock |> expect(:start, fn _, _, _ -> false end)
 
       assert :db_error == call_server(node3(), :invite, ["username2"])
     end
@@ -275,7 +263,7 @@ defmodule Server.WorkerTest do
     test "users invite each other successfully" do
       stub_invite_user()
       InvitationMock |> expect(:exists?, 2, fn from, _to -> from == "username2" end)
-      GameMock |> expect(:start, fn _, _ -> true end)
+      GameMock |> expect(:start, fn _, _, _ -> true end)
 
       assert :ok == call_server(node3(), :invite, ["username2"])
     end
@@ -302,7 +290,7 @@ defmodule Server.WorkerTest do
     test "the clients are called after mutual invitation" do
       stub_invite_user()
       InvitationMock |> expect(:exists?, 3, fn from, _to -> from == "username2" end)
-      GameMock |> expect(:start, fn _, _ -> true end)
+      GameMock |> expect(:start, fn _, _, _ -> true end)
 
       ClientMock |> expect(:cast_to_answer, 2, fn _, _, _ -> true end)
 
@@ -329,7 +317,7 @@ defmodule Server.WorkerTest do
     end
 
     test "try accepting invitation but the query fails" do
-      GameMock |> expect(:start, fn _, _ -> false end)
+      GameMock |> expect(:start, fn _, _, _ -> false end)
 
       assert :db_error == call_server(node3(), :accept, ["username2"])
     end
@@ -542,6 +530,40 @@ defmodule Server.WorkerTest do
       expect(ScoreMock, :get_misses, 2, fn id -> if id == 1, do: {:ok, 2}, else: {:ok, 1} end)
 
       assert {:ok, 66.67, 33.33} = call_server(node2(), :get_score, ["username1"])
+    end
+  end
+
+  describe "get turn" do
+    test "try getting turn but the client is not logged in" do
+      assert :unauthenticated = call_server(node1(), :get_turn, ["username2"])
+    end
+
+    test "try getting turn but there's no such user" do
+      UserMock |> expect(:exists?, fn _ -> false end)
+
+      assert :no_such_user = call_server(node2(), :get_turn, ["username1"])
+    end
+
+    test "try getting turn but there's no such game" do
+      GameMock |> expect(:exists?, fn _, _ -> false end)
+
+      assert :no_such_game = call_server(node2(), :get_turn, ["username1"])
+    end
+
+    test "try getting turn but get get_turn query fails" do
+      GameMock |> expect(:get_turn, fn _, _ -> :err end)
+
+      assert :db_error = call_server(node2(), :get_turn, ["username1"])
+    end
+
+    test "getting turn when it's other's turn" do
+      GameMock |> expect(:get_turn, fn _, _ -> {:ok, "username1"} end)
+
+      assert {:ok, false} = call_server(node2(), :get_turn, ["username1"])
+    end
+
+    test "getting turn successfully" do
+      assert {:ok, true} = call_server(node2(), :get_turn, ["username1"])
     end
   end
 

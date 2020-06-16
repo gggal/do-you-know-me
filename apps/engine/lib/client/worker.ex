@@ -221,6 +221,20 @@ defmodule Client.Worker do
     GenServer.call(:dykm_client, {:get_score, with_user})
   end
 
+   @doc """
+  Obtains scores with the specified user. A score is a float number representing
+  a percentage of successfully guessed questions on each side.
+  Possible responses are:
+    {:err, :not_bound} - if there's no user associated with the client
+    {:err, server_error} - for more info on possible errors refer to the server module
+    {:ok, score1, score2} - score was obtained
+  """
+  @spec get_turn(String.t()) :: {:err, atom()} | {:ok, boolean()}
+  def get_turn(with_user) do
+    Logger.info("Client is checking if it's their turn to play with #{with_user}")
+    GenServer.call(:dykm_client, {:get_turn, with_user})
+  end
+
   @doc """
   Lists all registered users, ignoring the associated user.
   Possible responses are:
@@ -244,7 +258,6 @@ defmodule Client.Worker do
   Lists all users for which there is a game with the associated user.
   Possible responses are:
     {:err, :not_bound} - if there's no user associated with the client
-    {:err, server_error} - for more info on possible errors refer to the server module
     {:ok, user_list} - list was obtained
   """
   @spec list_related :: {:err, atom()} | {:ok, [String.t()]}
@@ -298,6 +311,7 @@ defmodule Client.Worker do
   """
   @impl Client.Behaviour
   def cast_to_answer(client, from, q_num) do
+    Logger.error("Client recieved an answer")
     GenServer.cast({:dykm_client, client}, {:add_question, q_num, from})
   end
 
@@ -306,6 +320,7 @@ defmodule Client.Worker do
   """
   @impl Client.Behaviour
   def cast_to_guess(client, from, q_num, answer) do
+    Logger.error("Client recieved a guess")
     GenServer.cast({:dykm_client, client}, {:add_guess, from, q_num, answer})
   end
 
@@ -314,6 +329,7 @@ defmodule Client.Worker do
   """
   @impl Client.Behaviour
   def cast_to_see(client, from, q_num, answer, guess) do
+    Logger.error("Client recieved to see")
     GenServer.cast({:dykm_client, client}, {:add_result, from, q_num, answer, guess})
   end
 
@@ -497,6 +513,19 @@ defmodule Client.Worker do
     {:reply, {:err, :not_bound}, state}
   end
 
+  def handle_call({:get_turn, with_other}, _, %State{username: name} = state)
+      when not is_nil(name) do
+    with {:ok, turn} <- server_module().get_turn(with_other) do
+      {:reply, {:ok, turn}, state}
+    else
+      reason -> {:reply, {:err, reason}, state}
+    end
+  end
+
+  def handle_call({:get_turn, _}, _, state) do
+    {:reply, {:err, :not_bound}, state}
+  end
+
   def handle_call(:list_registered, _, %State{username: name} = state) when not is_nil(name) do
     with {:ok, list} <- server_module().list_users() do
       {:reply, {:ok, list}, state}
@@ -511,12 +540,7 @@ defmodule Client.Worker do
   end
 
   def handle_call(:list_related, _, %State{username: name} = state) when not is_nil(name) do
-    with {:ok, list} <- server_module().list_related() do
-      {:reply, {:ok, list}, state}
-    else
-      reason ->
-        {:reply, {:err, reason}, state}
-    end
+    {:reply, {:ok, State.all_related(state)}, state}
   end
 
   def handle_call(:list_related, _, state) do

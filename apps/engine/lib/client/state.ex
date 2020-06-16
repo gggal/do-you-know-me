@@ -76,4 +76,15 @@ defmodule Client.State do
   def remove_invitation(state = %State{invitations: from_users}, user) do
     %{state | invitations: MapSet.delete(from_users, user)}
   end
+
+  def all_related(state = %State{}) do
+    all_to_answer = Map.keys(state.to_answer) |> MapSet.new()
+    all_to_guess = Map.keys(state.to_guess) |> MapSet.new()
+    all_to_see = Map.keys(state.to_see) |> MapSet.new()
+
+    all_to_answer
+    |> MapSet.union(all_to_guess)
+    |> MapSet.union(all_to_see)
+    |> MapSet.to_list()
+  end
 end

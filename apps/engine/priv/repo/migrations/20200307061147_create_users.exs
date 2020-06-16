@@ -29,8 +29,11 @@ defmodule DB.Repo.Migrations.Initialize do
       add :user2, references(:users, column: :username, type: :string), null: false, primary_key: true
       add :question1, references(:questions)
       add :question2, references(:questions)
+      add :old_question1, references(:questions)
+      add :old_question2, references(:questions)
       add :score1, references(:scores)
       add :score2, references(:scores)
+      add :turn, :boolean, null: false
     end
   end
 end

@@ -12,11 +12,13 @@ defmodule DummyGame do
   @behaviour Game
 
   def exists?(_, _), do: true
-  def insert(_, _), do: true
-  def start(_, _), do: true
+  def insert(_, _, _), do: true
+  def start(_, _, _), do: true
   def all_related(_), do: ["username3"]
   def get_score(_, _), do: {:ok, 1}
+  def get_old_question(_, _), do: {:ok, 0}
   def get_question(_, _), do: {:ok, 0}
+  def get_turn(_, _), do: {:ok, "username2"}
   def answer_question(_, _, _), do: true
   def guess_question(_, _, _), do: true
 end
@@ -54,6 +56,7 @@ defmodule DummyClient do
   @behaviour Client.Behaviour
 
   def cast_invitation(_, _), do: :ok
+  def cast_related(_, _), do: :ok
   def cast_to_answer(_, _, _), do: :ok
   def cast_to_guess(_, _, _, _), do: :ok
   def cast_to_see(_, _, _, _, _), do: :ok
@@ -66,11 +69,11 @@ defmodule DummyServer do
   def login(_, _), do: :ok
   def unregister(_), do: :ok
   def list_users(), do: {:ok, []}
-  def list_related(), do: {:ok, []}
   def invite(_), do: :ok
   def accept(_), do: :ok
   def decline(_), do: :ok
   def answer_question(_, _), do: :ok
   def guess_question(_, _), do: :ok
   def get_score(_), do: {:ok, 50.0, 50.0}
+  def get_turn(_), do: {:ok, true}
 end

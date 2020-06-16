@@ -274,6 +274,32 @@ defmodule Client.WorkerTest do
     end
   end
 
+  describe "get turn" do
+    test "there's no user associated with the client" do
+      assert {:err, :not_bound} == Worker.get_turn("some_name")
+    end
+
+    test "get turn successfully" do
+      set_client_state(fn state -> State.set_username(state, "name") end)
+
+      assert {:ok, true} == Worker.get_turn("some_name")
+    end
+
+    test "try to get turn but the server returns an error" do
+      set_client_state(fn state -> State.set_username(state, "name") end)
+      ServerMock |> expect(:get_turn, fn _ -> :internal_error end)
+
+      assert {:err, :internal_error} == Worker.get_turn("some_name")
+    end
+
+    test "a call to the server has been made" do
+      set_client_state(fn state -> State.set_username(state, "name") end)
+      ServerMock |> expect(:get_turn, fn _ -> {:ok, 0, 0} end)
+
+      Worker.get_turn("some_name")
+    end
+  end
+
   describe "list users" do
     test "list related users successfully" do
       set_client_state(fn state -> State.set_username(state, "some_name") end)
@@ -282,19 +308,6 @@ defmodule Client.WorkerTest do
 
     test "there's no user associated with the client when listing related users" do
       assert {:err, :not_bound} == Worker.list_related()
-    end
-
-    test "a call to the server has been made when listing related users" do
-      set_client_state(fn state -> State.set_username(state, "some_name") end)
-      ServerMock |> expect(:list_related, fn -> {:ok, []} end)
-
-      Worker.list_related()
-    end
-
-    test "list related users but the server returns error" do
-      set_client_state(fn state -> State.set_username(state, "some_name") end)
-      ServerMock |> stub(:list_related, fn -> :unauthenticated end)
-      assert {:err, :unauthenticated} == Worker.list_related()
     end
 
     test "there's no user associated with the client when listing all users" do

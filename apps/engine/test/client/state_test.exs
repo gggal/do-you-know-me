@@ -187,4 +187,17 @@ defmodule Client.StateTest do
     state = State.new() |> State.put_to_answer(:user1, :q1)
     assert State.new() == State.remove_to_answer(state, :user1)
   end
+
+  test "listing empty list when no related users" do
+    assert [] == State.new |> State.all_related()
+  end
+
+  test "listing related users successfully" do
+    state = %{State.new() |
+    to_answer: %{user1: :q1},
+    to_guess: %{user2: :q2},
+    to_see: %{user3: :q3}}
+
+    assert MapSet.new([:user1, :user2, :user3]) == state |> State.all_related() |> MapSet.new
+  end
 end
