@@ -16,6 +16,7 @@ defmodule Engine.Cluster do
   defp spawn_node(node_host) do
     {:ok, node} = :slave.start(to_charlist("127.0.0.1"), node_host, inet_loader_args())
     :ok = add_code_paths(node)
+    transfer_configuration(node)
     ensure_client_started(node)
     {:ok, node}
   end
@@ -32,11 +33,12 @@ defmodule Engine.Cluster do
     rpc(node, :code, :add_paths, [:code.get_path()])
   end
 
-  defp ensure_dummy_client_started(node) do
-    rpc(node, Application, :ensure_all_started, [:mix])
-    rpc(node, Mix, :env, [Mix.env()])
-
-    {:ok, _pid} = rpc(node, Server.TestClient, :start_link, [])
+  defp transfer_configuration(node) do
+    for {app_name, _, _} <- Application.loaded_applications() do
+      for {key, val} <- Application.get_all_env(app_name) do
+        rpc(node, Application, :put_env, [app_name, key, val])
+      end
+    end
   end
 
   defp ensure_client_started(node) do

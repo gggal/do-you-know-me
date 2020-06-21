@@ -189,15 +189,17 @@ defmodule Client.StateTest do
   end
 
   test "listing empty list when no related users" do
-    assert [] == State.new |> State.all_related()
+    assert [] == State.new() |> State.all_related()
   end
 
   test "listing related users successfully" do
-    state = %{State.new() |
-    to_answer: %{user1: :q1},
-    to_guess: %{user2: :q2},
-    to_see: %{user3: :q3}}
+    state = %{
+      State.new()
+      | to_answer: %{user1: :q1},
+        to_guess: %{user2: :q2},
+        to_see: %{user3: :q3}
+    }
 
-    assert MapSet.new([:user1, :user2, :user3]) == state |> State.all_related() |> MapSet.new
+    assert MapSet.new([:user1, :user2, :user3]) == state |> State.all_related() |> MapSet.new()
   end
 end

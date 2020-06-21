@@ -181,37 +181,35 @@ defmodule Server.Game do
 
   def get_turn(_, _), do: :err
 
-  def answer_question(game_id, user1, answer) do
+  def answer_question(players, from, answer) do
     case DB.Repo.transaction(fn ->
-           with {:ok, q_id} when not is_nil(q_id) <- get_question(game_id, user1),
-                {:ok, old_q_id} when not is_nil(old_q_id) <- get_old_question(game_id, user1) do
+           with game_id <- reorder(players),
+                true <- swap_questions(game_id, from),
+                {:ok, q_id} when not is_nil(q_id) <- get_question(game_id, from),
+                {:ok, old_q_id} when not is_nil(old_q_id) <- get_old_question(game_id, from) do
              #  the old question will become the current one, so set a random question
              #  and null out answer and guess
 
-             if not Question.set_question_number(old_q_id, random_question()) do
+             if not Question.set_question_number(q_id, random_question()) do
                DB.Repo.rollback(:question_num_update_failed)
              end
 
-             if not Question.set_question_answer(old_q_id, nil) do
+             if not Question.set_question_answer(q_id, nil) do
                DB.Repo.rollback(:question_num_update_failed)
              end
 
-             if not Question.set_question_guess(old_q_id, nil) do
+             if not Question.set_question_guess(q_id, nil) do
                DB.Repo.rollback(:question_num_update_failed)
              end
 
              #  the new question will become the old one
 
-             if not Question.set_question_answer(q_id, answer) do
+             if not Question.set_question_answer(old_q_id, answer) do
                DB.Repo.rollback(:question_answer_update_failed)
              end
 
-             if not Question.set_question_guess(q_id, nil) do
+             if not Question.set_question_guess(old_q_id, nil) do
                DB.Repo.rollback(:question_guess_update_failed)
-             end
-
-             if not swap_questions(game_id, user1) do
-               DB.Repo.rollback(:swapping_questions_failed)
              end
 
              # alternate turn value
@@ -219,6 +217,7 @@ defmodule Server.Game do
                DB.Repo.rollback(:turn_switch_failed)
              end
            else
+             false -> DB.Repo.rollback(:swapping_questions_failed)
              _ -> DB.Repo.rollback(:obtaining_game_data_fails)
            end
          end) do
@@ -242,7 +241,8 @@ defmodule Server.Game do
              end
 
              if guess == answer do
-               if not Score.set_hits(s_id, hits + 1), do: DB.Repo.rollback(:update_hits_failed)
+               if not Score.set_hits(s_id, hits + 1),
+                 do: DB.Repo.rollback(:update_hits_failed)
              else
                if not Score.set_misses(s_id, misses + 1),
                  do: DB.Repo.rollback(:update_misses_failed)
@@ -255,7 +255,7 @@ defmodule Server.Game do
         true
 
       {:error, reason} ->
-        Logger.error("Failed to answer question, reason: #{reason}")
+        Logger.error("Failed to guess question, reason: #{reason}")
         false
     end
   end
@@ -312,7 +312,8 @@ defmodule Server.Game do
 
       updated =
         if is_nil(old_q1_id) do
-          %{question1: random_question(), old_question1: q1_id}
+          {:ok, %{id: new_q1_id}} = %Question{} |> DB.Repo.insert()
+          %{question1: new_q1_id, old_question1: q1_id}
         else
           %{question1: old_q1_id, old_question1: q1_id}
         end
@@ -327,14 +328,15 @@ defmodule Server.Game do
   end
 
   defp swap_questions({user1, user2}, user2) do
-    with game when not is_nil(game) <- DB.Repo.get_by(Server.Game, %{user1: user2, user2: user1}) do
-      %{question2: q1_id, old_question2: old_q1_id} = game
+    with game when not is_nil(game) <- DB.Repo.get_by(Server.Game, %{user1: user1, user2: user2}) do
+      %{question2: q2_id, old_question2: old_q2_id} = game
 
       updated =
-        if is_nil(old_q1_id) do
-          %{question2: random_question(), old_question2: q1_id}
+        if is_nil(old_q2_id) do
+          {:ok, %{id: new_q2_id}} = %Question{} |> DB.Repo.insert()
+          %{question2: new_q2_id, old_question2: q2_id}
         else
-          %{question2: old_q1_id, old_question2: q1_id}
+          %{question2: old_q2_id, old_question2: q2_id}
         end
 
       game

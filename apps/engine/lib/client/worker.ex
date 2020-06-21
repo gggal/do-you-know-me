@@ -7,8 +7,6 @@ defmodule Client.Worker do
 
   alias Client.State
 
-  # TODO: client sending invitation/question/guess/answer to themselves
-
   def server_module, do: Application.get_env(:engine, :server_worker)
 
   @questions_file "questions.txt"
@@ -126,6 +124,10 @@ defmodule Client.Worker do
     {:err, :no_such_question} - if there's no question from the specified user
     {:err, :invalid_format} - the question received from the server is not in the
   expected format {question_number, question_answer}
+    {:err, :cannot_open_questions_file} - opening questions file failed
+    {:err, :corrupted_questions_file} - the questions file content is not a valid json file
+    {:err, :invalid_question_number} - given number exceeds number of questions in file
+    {:err, :unknown} - unknown reason for failure
     {:err, server_error} - for more info on possible errors refer to the server module
     {:ok, {question, question_answer}} - question was obtained
   """
@@ -143,6 +145,11 @@ defmodule Client.Worker do
     {:err, :no_such_question} - if there's no question from the specified user
     {:err, :invalid_format} - the question received from the server is not in the
   expected format
+    {:err, :not_turn} - it's not user's turn to play
+    {:err, :cannot_open_questions_file} - opening questions file failed
+    {:err, :corrupted_questions_file} - the questions file content is not a valid json file
+    {:err, :invalid_question_number} - given number exceeds number of questions in file
+    {:err, :unknown} - unknown reason for failure
     {:err, server_error} - for more info on possible errors refer to the server module
     {:ok, question} - question was obtained
   """
@@ -158,6 +165,10 @@ defmodule Client.Worker do
     {:err, :no_such_question} - if there's no question from the specified user
     {:err, :invalid_format} - the question received from the server is not in the
   expected format {question_num, answer, guess}
+    {:err, :cannot_open_questions_file} - opening questions file failed
+    {:err, :corrupted_questions_file} - the questions file content is not a valid json file
+    {:err, :invalid_question_number} - given number exceeds number of questions in file
+    {:err, :unknown} - unknown reason for failure
     {:err, server_error} - for more info on possible errors refer to the server module
     {:ok, {question, ans, guess}} - question was obtained
   """
@@ -170,6 +181,7 @@ defmodule Client.Worker do
   Sends an invitation to the specified user.
   Possible responses are:
     {:err, :not_bound} - if there's no user associated with the client
+    {:err, :self_invitation_is_forbidden} - if user tries to invite oneself
     {:err, server_error} - for more info on possible errors refer to the server module
     :ok - invitation was send
   """
@@ -221,13 +233,13 @@ defmodule Client.Worker do
     GenServer.call(:dykm_client, {:get_score, with_user})
   end
 
-   @doc """
-  Obtains scores with the specified user. A score is a float number representing
-  a percentage of successfully guessed questions on each side.
+  @doc """
+  Returns true if it's the users's turn to play. When the user accepts an invitation
+  they always start first. Once they give their answer, it's other player's turn and so on.
   Possible responses are:
     {:err, :not_bound} - if there's no user associated with the client
     {:err, server_error} - for more info on possible errors refer to the server module
-    {:ok, score1, score2} - score was obtained
+    {:ok, turn} - score was obtained
   """
   @spec get_turn(String.t()) :: {:err, atom()} | {:ok, boolean()}
   def get_turn(with_user) do
@@ -272,6 +284,7 @@ defmodule Client.Worker do
   Possible responses are:
     {:err, :not_bound} - if there's no user associated with the client
     {:err, :no_such_question} - if there's no question from the specified user
+    {:err, :answer_from_oneself_is_forbidden} - if user tries to answer a question from oneself
     {:err, :invalid_format} - if the answer is not in the correct format
     {:err, server_error} - for more info on possible errors refer to the server module
     :ok - question was answered successfully
@@ -288,6 +301,7 @@ defmodule Client.Worker do
   Possible responses are:
     {:err, :not_bound} - if there's no user associated with the client
     {:err, :no_such_question} - if there's no question from the specified user
+    {:err, :guess_from_oneself_is_forbidden} - if user tries to guess a question from oneself
     {:err, :invalid_format} - if the guess is not in the correct format
     {:err, server_error} - for more info on possible errors refer to the server module
     :ok - question was guessed successfully
@@ -551,6 +565,10 @@ defmodule Client.Worker do
     {:reply, {:err, :not_bound}, state}
   end
 
+  def handle_call({:guess, user, _}, _, %State{username: user} = state) do
+    {:reply, {:err, :guess_from_oneself_is_forbidden}, state}
+  end
+
   def handle_call({:guess, from, guess}, _, state)
       when guess == "a" or guess == "b" or guess == "c" do
     case State.get_to_guess(state, from) do
@@ -576,23 +594,29 @@ defmodule Client.Worker do
     {:reply, {:err, :not_bound}, state}
   end
 
+  def handle_call({:answer, user, _}, _, %State{username: user} = state) do
+    {:reply, {:err, :answer_from_oneself_is_forbidden}, state}
+  end
+
   def handle_call({:answer, from, answer}, _, state)
       when answer == "a" or answer == "b" or answer == "c" do
-    case State.get_to_answer(state, from) do
-      nil ->
-        {:reply, {:err, :no_such_question}, state}
-
-      _ ->
-        with :ok <- server_module().answer_question(from, answer) do
-          {:reply, :ok, State.remove_to_answer(state, from)}
-        else
-          reason -> {:reply, {:err, reason}, state}
-        end
+    with to_answer when not is_nil(to_answer) <- State.get_to_answer(state, from),
+         {:ok, true} <- server_module().get_turn(from),
+         :ok <- server_module().answer_question(from, answer) do
+      {:reply, :ok, State.remove_to_answer(state, from)}
+    else
+      {:ok, false} -> {:reply, {:err, :not_turn}, state}
+      nil -> {:reply, {:err, :no_such_question}, state}
+      reason -> {:reply, {:err, reason}, state}
     end
   end
 
   def handle_call({:answer, _, _}, _, state) do
     {:reply, {:err, :invalid_format}, state}
+  end
+
+  def handle_call({:invite, name}, _, %State{username: name} = state) when not is_nil(name) do
+    {:reply, {:err, :self_invitation_is_forbidden}, state}
   end
 
   def handle_call({:invite, to}, _, %State{username: name} = state) when not is_nil(name) do
@@ -641,7 +665,13 @@ defmodule Client.Worker do
 
   @impl true
   def handle_cast({:add_question, q, from}, state) do
-    {:noreply, State.put_to_answer(state, from, q)}
+    # upon mutual invitation the invite needs to be removed when the game starts
+    new_state =
+      state
+      |> State.remove_invitation(from)
+      |> State.put_to_answer(from, q)
+
+    {:noreply, new_state}
   end
 
   def handle_cast({:add_guess, from, question, ans}, state) do
@@ -678,7 +708,7 @@ defmodule Client.Worker do
     end
   end
 
-  defp fetch_question(question_number) when is_integer(question_number) do
+  def fetch_question(question_number) when is_integer(question_number) do
     try do
       {:ok, line} =
         File.stream!(@questions_file)
@@ -693,14 +723,19 @@ defmodule Client.Worker do
       MatchError ->
         {:error, :corrupted_questions_file}
 
-      _ ->
+      ArgumentError ->
+        {:error, :invalid_question_number}
+
+      err ->
+        Logger.error(
+          "Failed to fetch question #{question_number} for unknown reason: #{inspect(err)}"
+        )
+
         {:error, :unknown}
     end
-
-    # |> Formatter.info(label: "Fetching question No#{question_number}: ")
   end
 
-  defp fetch_question(_invalid_value) do
+  def fetch_question(_invalid_value) do
     {:error, :invalid_format}
   end
 

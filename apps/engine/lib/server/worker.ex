@@ -352,7 +352,8 @@ defmodule Server.Worker do
 
   defp guess_question_helper(from, to, guess, state) do
     with {:ok, old_question} when not is_nil(old_question) <- get_q_number({from, to}, from),
-         {:ok, answer} <- get_q_answer({from, to}, from),
+         {:ok, q_id} <- game_model().get_old_question({from, to}, from),
+         {:ok, answer} <- question_model().get_question_answer(q_id),
          true <- game_model().guess_question({from, to}, from, guess) do
       send_user(from, state, :cast_to_see, [to, old_question, answer, guess])
 
@@ -373,11 +374,14 @@ defmodule Server.Worker do
 
   defp start_game_helper(from, to, state) do
     if game_model().start(from, to, to) do
-      {:ok, q1} = get_q_number({from, to}, from)
-      {:ok, q2} = get_q_number({from, to}, to)
-      send_user(from, state, :cast_to_answer, [to, q1])
-      send_user(to, state, :cast_to_answer, [from, q2])
-      true
+      with {:ok, q1} <- get_new_q_number({from, to}, from),
+           {:ok, q2} <- get_new_q_number({from, to}, to) do
+        send_user(from, state, :cast_to_answer, [to, q1])
+        send_user(to, state, :cast_to_answer, [from, q2])
+        true
+      else
+        _ -> false
+      end
     else
       false
     end
@@ -401,11 +405,7 @@ defmodule Server.Worker do
       send_user(user, state, :cast_invitation, [other])
     end
 
-    Logger.error("list related:")
-
     for other <- game_model().all_related(user) do
-      Logger.error("related #{other}")
-
       with {:ok, new_q1} <- game_model().get_question({user, other}, user),
            {:ok, q1} <- game_model().get_old_question({user, other}, user),
            {:ok, q2} <- game_model().get_old_question({user, other}, other),
@@ -416,27 +416,15 @@ defmodule Server.Worker do
            {:ok, q2_num} <- question_model().get_question_number(q2),
            {:ok, q2_answer} <- question_model().get_question_answer(q2),
            {:ok, q2_guess} <- question_model().get_question_guess(q2) do
-        Logger.error("my question #{q1}
-           #{other}'s question #{q2}
-           my number #{q1_num},
-           #{other}'s number #{q2_num}
-           my answer #{q1_answer},
-           #{other}'s answer #{q2_answer},
-           my guess #{q1_guess},
-           #{other}'s question #{q2_guess}")
-
-        if is_nil(q1_answer) do
-          Logger.error("1 #{other}")
+        if not is_nil(new_q1_num) do
           send_user(user, state, :cast_to_answer, [other, new_q1_num])
         end
 
         if not is_nil(q2_answer) and is_nil(q2_guess) do
-          Logger.error("2 #{other}")
           send_user(user, state, :cast_to_guess, [other, q2_num, q2_answer])
         end
 
         if not is_nil(q1_answer) and not is_nil(q1_guess) do
-          Logger.error("3 #{other}")
           send_user(user, state, :cast_to_see, [other, q1_num, q1_answer, q1_guess])
         end
       end
@@ -515,22 +503,6 @@ defmodule Server.Worker do
   defp get_new_q_number({user1, user2}, user) do
     with {:ok, q_id} <- game_model().get_question({user1, user2}, user) do
       question_model().get_question_number(q_id)
-    else
-      _ -> :err
-    end
-  end
-
-  defp get_q_answer({user1, user2}, user) do
-    with {:ok, q_id} <- game_model().get_question({user1, user2}, user) do
-      question_model().get_question_answer(q_id)
-    else
-      _ -> :err
-    end
-  end
-
-  defp get_q_guess({user1, user2}, user) do
-    with {:ok, q_id} <- game_model().get_question({user1, user2}, user) do
-      question_model().get_question_guess(q_id)
     else
       _ -> :err
     end

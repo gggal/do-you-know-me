@@ -8,7 +8,9 @@ defmodule Engine.MixProject do
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
-      deps: deps()
+      test_paths: test_paths(Mix.env()),
+      deps: deps(),
+      aliases: aliases()
     ]
   end
 
@@ -22,8 +24,14 @@ defmodule Engine.MixProject do
   end
 
   # Specify which paths to compile per environment.
-  defp elixirc_paths(:test), do: ["lib", "test/server", "test/support"]
-  defp elixirc_paths(_), do: ["lib"]
+  defp elixirc_paths(:test), do: ["lib", "test/unit/support", "test/unit"]
+  defp elixirc_paths(:integration), do: ["lib", "test/unit/support"]
+  defp elixirc_paths(:dev), do: ["lib"]
+
+  # Specify test paths per environment.
+  defp test_paths(:integration), do: ["test/integration"]
+  defp test_paths(:test), do: ["test/unit"]
+  defp test_paths(_), do: []
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
@@ -36,7 +44,30 @@ defmodule Engine.MixProject do
     ]
   end
 
+  def run_integration_tests(args), do: test_with_env("integration", args)
+  def run_unit_tests(args), do: test_with_env("test", args)
+
+  # got this from https://spin.atomicobject.com/2018/10/22/elixir-test-multiple-environments/
+  def test_with_env(env, args) do
+    args = if IO.ANSI.enabled?(), do: ["--color" | args], else: ["--no-color" | args]
+    IO.puts("==> Running tests with `MIX_ENV=#{env}`")
+
+    {_, res} =
+      System.cmd("mix", ["test" | args],
+        into: IO.binstream(:stdio, :line),
+        env: [{"MIX_ENV", to_string(env)}]
+      )
+
+    if res > 0 do
+      System.at_exit(fn _ -> exit({:shutdown, 1}) end)
+    end
+  end
+
   defp aliases do
-    [test: "test --no-start"]
+    [
+      "test.all": ["test.unit", "test.integration"],
+      "test.unit": &run_unit_tests/1,
+      "test.integration": &run_integration_tests/1
+    ]
   end
 end

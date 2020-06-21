@@ -360,6 +360,13 @@ defmodule Client.WorkerTest do
       assert {:err, :no_such_question} == Worker.give_guess("some_name", "a")
     end
 
+    test "try to give a guess to a question from oneself" do
+      set_client_state(fn state -> State.set_username(state, "name") end)
+
+      assert {:err, :guess_from_oneself_is_forbidden} ==
+               Worker.give_guess("name", "a")
+    end
+
     test "try to give a guess but the server returns an error" do
       set_client_state(fn state ->
         State.put_to_guess(state, "some_name", {"q", "a"})
@@ -431,6 +438,13 @@ defmodule Client.WorkerTest do
       assert {:err, :no_such_question} == Worker.give_answer("some_name", "a")
     end
 
+    test "try to give an answer to a question from oneself" do
+      set_client_state(fn state -> State.set_username(state, "name") end)
+
+      assert {:err, :answer_from_oneself_is_forbidden} ==
+               Worker.give_answer("name", "a")
+    end
+
     test "try to give an answer but the server returns an error" do
       set_client_state(fn state ->
         State.put_to_answer(state, "some_name", "q")
@@ -471,11 +485,27 @@ defmodule Client.WorkerTest do
       assert :ok == Worker.give_answer("some_name", "b")
       assert nil == :sys.get_state(:dykm_client) |> State.get_to_answer("some_name")
     end
+
+    test "can't answer if it's not user's turn" do
+      set_client_state(fn state ->
+        State.put_to_answer(state, "some_name", "q")
+        |> State.set_username("name")
+      end)
+
+      ServerMock |> expect(:get_turn, fn _ -> {:ok, false} end)
+
+      assert {:err, :not_turn} == Worker.give_answer("some_name", "a")
+    end
   end
 
   describe "invite" do
     test "there's no user associated with the client" do
       assert {:err, :not_bound} == Worker.invite("some_name")
+    end
+
+    test "try to invite self" do
+      set_client_state(fn state -> State.set_username(state, "name") end)
+      assert {:err, :self_invitation_is_forbidden} == Worker.invite("name")
     end
 
     test "try to invite user but the server returns error" do
@@ -616,6 +646,19 @@ defmodule Client.WorkerTest do
       assert 0 ==
                :sys.get_state(:dykm_client)
                |> State.get_to_answer("some_name")
+    end
+
+    test "the invitation needs to be removed when casting question" do
+      set_client_state(fn state ->
+        State.add_invitation(state, "some_name")
+        |> State.set_username("name")
+      end)
+
+      Worker.cast_to_answer(node(), "some_name", 0)
+
+      assert MapSet.new() ==
+               :sys.get_state(:dykm_client)
+               |> State.get_invitations()
     end
 
     test "casted 'guess' questions have to be added to the internal state" do
