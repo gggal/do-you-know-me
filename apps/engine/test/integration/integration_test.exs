@@ -44,11 +44,10 @@ defmodule IntegrationTest do
     user1 = TestUtil.random_username()
 
     # preparing database
-    # todo rewrite and use api
-    assert %User{username: user1, password: "pass"} |> DB.Repo.insert() |> elem(0) == :ok
-    assert %User{username: "user2", password: "pass"} |> DB.Repo.insert() |> elem(0) == :ok
-    assert %User{username: "user3", password: "pass"} |> DB.Repo.insert() |> elem(0) == :ok
-    assert %Invitation{from: "user3", to: user1} |> DB.Repo.insert() |> elem(0) == :ok
+    assert true == User.insert(user1, "pass")
+    assert true == User.insert("user2", "pass")
+    assert true == User.insert("user3", "pass")
+    assert true == Invitation.insert("user3", user1)
     {:ok, %{id: q_id1}} = %Question{question_num: 1, answer: nil, guess: nil} |> DB.Repo.insert()
     {:ok, %{id: q_id2}} = %Question{question_num: 2, answer: nil, guess: nil} |> DB.Repo.insert()
 
