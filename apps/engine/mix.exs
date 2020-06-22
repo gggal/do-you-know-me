@@ -26,7 +26,7 @@ defmodule Engine.MixProject do
   # Specify which paths to compile per environment.
   defp elixirc_paths(:test), do: ["lib", "test/unit/support", "test/unit"]
   defp elixirc_paths(:integration), do: ["lib", "test/unit/support"]
-  defp elixirc_paths(:dev), do: ["lib"]
+  defp elixirc_paths(_), do: ["lib"]
 
   # Specify test paths per environment.
   defp test_paths(:integration), do: ["test/integration"]
