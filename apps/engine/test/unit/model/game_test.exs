@@ -562,8 +562,6 @@ defmodule Server.GameTest do
 
   describe "answer" do
     test "try answering question but there's no such game" do
-      add_old_questions()
-
       user3 = TestUtil.random_username()
       assert true == User.insert(user3, "password")
 
@@ -576,8 +574,6 @@ defmodule Server.GameTest do
     end
 
     test "try answering question but there's no such user1" do
-      add_old_questions()
-
       assert false ==
                Game.answer_question(
                  {TestUtil.random_username(), second_user()},
@@ -589,8 +585,6 @@ defmodule Server.GameTest do
     end
 
     test "try answering question but there's no such user2" do
-      add_old_questions()
-
       assert false ==
                Game.answer_question({first_user(), TestUtil.random_username()}, first_user(), "a")
 
@@ -598,8 +592,6 @@ defmodule Server.GameTest do
     end
 
     test "try answering question but first user is nil" do
-      add_old_questions()
-
       assert false ==
                Game.answer_question({nil, second_user()}, second_user(), "a")
 
@@ -607,8 +599,6 @@ defmodule Server.GameTest do
     end
 
     test "try answering question but sec user is nil" do
-      add_old_questions()
-
       assert false ==
                Game.answer_question({first_user(), nil}, first_user(), "a")
 
@@ -616,16 +606,12 @@ defmodule Server.GameTest do
     end
 
     test "try answering question but 'from' user is nil" do
-      add_old_questions()
-
       assert false == Game.answer_question(game_id(), nil, "a")
 
       on_exit(fn -> remove_old_questions() end)
     end
 
     test "try answering question but 'from' user is not user1 or user2" do
-      add_old_questions()
-
       assert false ==
                Game.answer_question(game_id(), TestUtil.random_username(), "a")
 
@@ -633,29 +619,18 @@ defmodule Server.GameTest do
     end
 
     test "answering question but the answer is invalid" do
-      add_old_questions()
-
       assert false == Game.answer_question(game_id(), second_user(), "d")
 
       on_exit(fn -> remove_old_questions() end)
     end
 
-    test "answering question but there's no previous question" do
-      assert false ==
-               Game.answer_question(game_id(), first_user(), "a")
-    end
-
     test "answering question with nil answer" do
-      add_old_questions()
-
       assert true == Game.answer_question(game_id(), first_user(), nil)
 
       on_exit(fn -> remove_old_questions() end)
     end
 
     test "rollback answering question when setting answer fails" do
-      add_old_questions()
-
       q_number =
         Game.get_question(game_id(), first_user())
         |> elem(1)
@@ -672,8 +647,6 @@ defmodule Server.GameTest do
     end
 
     test "question number changes when answering question successfully" do
-      add_old_questions()
-
       q_number =
         Game.get_question(game_id(), first_user())
         |> elem(1)
@@ -690,8 +663,6 @@ defmodule Server.GameTest do
     end
 
     test "answer changes when answering question successfully" do
-      add_old_questions()
-
       assert true == Game.answer_question(game_id(), first_user(), "b")
 
       assert {:ok, "b"} ==
@@ -703,8 +674,6 @@ defmodule Server.GameTest do
     end
 
     test "guess is nil when answering question successfully" do
-      add_old_questions()
-
       assert true == Game.answer_question(game_id(), first_user(), "b")
 
       assert {:ok, nil} ==
@@ -716,8 +685,6 @@ defmodule Server.GameTest do
     end
 
     test "new question's answer and guess are nil" do
-      add_old_questions()
-
       assert true == Game.answer_question(game_id(), first_user(), "b")
 
       {:ok, q_id} = Game.get_question(game_id(), first_user())
@@ -728,8 +695,6 @@ defmodule Server.GameTest do
     end
 
     test "turn has switched after answeing question" do
-      add_old_questions()
-
       {:ok, prev_to_play} = Game.get_turn(first_user(), second_user())
 
       assert true == Game.answer_question(game_id(), first_user(), "b")

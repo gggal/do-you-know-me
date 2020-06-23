@@ -230,10 +230,12 @@ defmodule Server.Game do
     end
   end
 
-  def guess_question(game_id, user1, guess) do
+  def guess_question({user1, user2} = game_id, other, guess) do
+    user = if other == user1, do: user2, else: user1
+
     case DB.Repo.transaction(fn ->
-           with {:ok, q_id} when not is_nil(q_id) <- get_old_question(game_id, user1),
-                {:ok, s_id} <- get_score(game_id, user1),
+           with {:ok, q_id} when not is_nil(q_id) <- get_old_question(game_id, other),
+                {:ok, s_id} <- get_score(game_id, user),
                 %{answer: answer} <- DB.Repo.get(Question, q_id),
                 %{hits: hits, misses: misses} <- DB.Repo.get(Score, s_id) do
              if Question.set_question_guess(q_id, guess) == false do
@@ -306,7 +308,7 @@ defmodule Server.Game do
     end
   end
 
-  defp swap_questions({user1, user2}, user1) do
+  defp swap_questions({user1, user2}, user1) when not is_nil(user2) and not is_nil(user1) do
     with game when not is_nil(game) <- DB.Repo.get_by(Server.Game, %{user1: user1, user2: user2}) do
       %{question1: q1_id, old_question1: old_q1_id} = game
 
@@ -327,7 +329,7 @@ defmodule Server.Game do
     end
   end
 
-  defp swap_questions({user1, user2}, user2) do
+  defp swap_questions({user1, user2}, user2) when not is_nil(user2) and not is_nil(user1) do
     with game when not is_nil(game) <- DB.Repo.get_by(Server.Game, %{user1: user1, user2: user2}) do
       %{question2: q2_id, old_question2: old_q2_id} = game
 
@@ -347,6 +349,8 @@ defmodule Server.Game do
       nil -> false
     end
   end
+
+  defp swap_questions(_, _), do: false
 
   defp insert_game_helper(user1, user2, q1, q2, s1, s2, turn) do
     changeset(%Server.Game{}, %{

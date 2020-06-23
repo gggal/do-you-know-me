@@ -20,7 +20,6 @@ defmodule IntegrationTest do
     remote_client(node1(), :unregister, ["pass"])
     remote_client(node2(), :unregister, ["pass"])
     remote_client(node2(), :unregister, ["pass"])
-
     :ok
   end
 
@@ -208,6 +207,44 @@ defmodule IntegrationTest do
     # Questions must be swapped once more
     assert {:ok, q2} == Game.get_question({user1, user2}, user2)
     assert {:ok, new_q2} == Game.get_old_question({user1, user2}, user2)
+  end
+
+  test "scores" do
+    user1 = TestUtil.random_username()
+    user2 = TestUtil.random_username()
+
+    assert :ok == remote_client(node1(), :register, [user1, "pass"])
+    assert :ok == remote_client(node2(), :register, [user2, "pass"])
+
+    assert :ok == remote_client(node1(), :invite, [user2])
+    assert :ok == remote_client(node2(), :accept, [user1])
+    # scores are 0 initially
+    assert {:ok, 0.0, 0.0} == remote_client(node1(), :get_score, [user2])
+    assert {:ok, 0.0, 0.0} == remote_client(node2(), :get_score, [user1])
+
+    assert :ok == remote_client(node2(), :give_answer, [user1, "a"])
+    assert {:ok, true} == remote_client(node1(), :give_guess, [user2, "a"])
+    # scores are calculated correctly after first round
+    assert {:ok, 100.0, 0.0} == remote_client(node1(), :get_score, [user2])
+    assert {:ok, 0.0, 100.0} == remote_client(node2(), :get_score, [user1])
+
+    assert :ok == remote_client(node1(), :give_answer, [user2, "a"])
+    assert {:ok, true} == remote_client(node2(), :give_guess, [user1, "a"])
+    # scores are calculated correctly after second round
+    assert {:ok, 100.0, 100.0} == remote_client(node1(), :get_score, [user2])
+    assert {:ok, 100.0, 100.0} == remote_client(node2(), :get_score, [user1])
+
+    assert :ok == remote_client(node2(), :give_answer, [user1, "a"])
+    assert {:ok, false} == remote_client(node1(), :give_guess, [user2, "b"])
+    # scores are calculated correctly after third round
+    assert {:ok, 50.0, 100.0} == remote_client(node1(), :get_score, [user2])
+    assert {:ok, 100.0, 50.0} == remote_client(node2(), :get_score, [user1])
+
+    assert :ok == remote_client(node1(), :give_answer, [user2, "a"])
+    assert {:ok, true} == remote_client(node2(), :give_guess, [user1, "a"])
+    # scores are calculated correctly after third round
+    assert {:ok, 50.0, 100.0} == remote_client(node1(), :get_score, [user2])
+    assert {:ok, 100.0, 50.0} == remote_client(node2(), :get_score, [user1])
   end
 
   defp wipe_out_db do
