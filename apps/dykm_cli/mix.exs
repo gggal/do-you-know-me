@@ -16,7 +16,6 @@ defmodule Client.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      applications: [:gen_state_machine],
       extra_applications: [:logger, :observer],
       mod: {CLI.Application, []}
     ]
@@ -27,7 +26,7 @@ defmodule Client.MixProject do
     [
       {:poison, "~> 3.1"},
       {:logger_file_backend, "~> 0.0.11", runtime: false},
-      {:gen_state_machine, "~> 2.0"},
+      {:scribe, "~> 0.10"},
       {:engine, path: "../engine", runtime: false}
     ]
   end

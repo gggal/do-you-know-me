@@ -2,27 +2,29 @@ defmodule StateMachine do
   use GenServer
 
   @states %{
-    intro: %{login: :login, register: :register, exit: :end_game},
+    intro: %{login: :login, register: :register, exit: :exit},
     login: %{succ: :main_menu},
     register: %{succ: :main_menu},
     main_menu: %{
       invite: :all_users,
       get_scores: :scores,
-      get_invites: :inv_menu,
-      play: :game_menu
+      get_invites: :invitation_menu,
+      play: :game_menu,
+      exit: :exit
     },
     all_users: %{back: :main_menu},
     scores: %{back: :main_menu},
-    inv_menu: %{choose: :invitation, back: :main_menu},
-    invitation: %{back: :inv_menu},
+    invitation_menu: %{choose: :invitation, back: :main_menu},
+    invitation: %{back: :invitation_menu},
     game_menu: %{choose: :game, back: :main_menu},
-    game: %{back: :game_menu}
+    game: %{back: :game_menu, play: :game},
+    exit: %{}
   }
 
   # __________API__________#
 
   def start() do
-    GenServer.start_link(__MODULE__, name: :state_machine)
+    GenServer.start_link(__MODULE__, nil, name: :state_machine)
   end
 
   def move(move) do
@@ -36,7 +38,7 @@ defmodule StateMachine do
   # __________Callbacks__________#
 
   @impl true
-  def init() do
+  def init(_) do
     # intro is the start state
     {:ok, :intro}
   end
@@ -51,7 +53,7 @@ defmodule StateMachine do
            |> Map.get(transition) do
       {:reply, {:ok, new_state}, new_state}
     else
-      nil -> {:reply, :err, new_state}
+      nil -> {:reply, :err, state}
     end
   end
 end

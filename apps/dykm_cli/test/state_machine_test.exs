@@ -3,10 +3,12 @@ defmodule StateMachineTest do
 
   setup_all do
     {:ok, _pid} = StateMachine.start()
+    :ok
   end
 
   setup do
-    :sys.transform_state(:state_machine, fn _ -> :intro end)
+    :sys.replace_state(:state_machine, fn _ -> :intro end)
+    :ok
   end
 
   test "getting the correct initial state after initialization" do

@@ -7,34 +7,25 @@ defmodule CLI.Application do
 
   use Application
 
-  def main(args) do
-    options = [switches: [file: :string], aliases: [f: :file]]
-    {opts, _, _} = OptionParser.parse(args, options)
-    IO.inspect(opts, label: "Command Line Arguments")
-    # CLI.start_game()
-  end
 
   @doc """
   Starting the client application
   """
   def start(_, _) do
-    import Supervisor.Spec, warn: false
-
-    # with nick when not is_nil(nick) <- Client.Connectivity.nick(),
-    #      true <- Client.Connectivity.connect_to_server_node("127.0.0.1") do
-    # with nick when not is_nil(nick) <- Client.Connectivity.nick() do
     children = [
-      # Starts a worker by calling: Client.Worker.start_link(arg)
-      worker(Client.Worker, [])
+      %{
+        id: ClientWorker,
+        start: {Client.Worker, :start_link, []}
+      },
+      %{
+        id: StateMachineWorker,
+        start: {StateMachine, :start, []}
+      }
     ]
 
-    opts = [strategy: :one_for_one, name: Client.Supervisor]
-    Supervisor.start_link(children, opts)
-    # else
-    # _ -> {:error, "Can't connect to server or establish client."}
-    # end
+    # All workers should be restarted if one of them fails
+    {:ok, _pid} = Supervisor.start_link(children, strategy: :one_for_all)
   end
 
   # TODO: add functionality for listing only users eligable for inviting
-  # TODO: cant reinvite after the first invitation got declined
 end
