@@ -409,23 +409,24 @@ defmodule Server.Worker do
       with {:ok, new_q1} <- game_model().get_question({user, other}, user),
            {:ok, q1} <- game_model().get_old_question({user, other}, user),
            {:ok, q2} <- game_model().get_old_question({user, other}, other),
-           {:ok, new_q1_num} <- question_model().get_question_number(new_q1),
-           {:ok, q1_num} <- question_model().get_question_number(q1),
-           {:ok, q1_answer} <- question_model().get_question_answer(q1),
-           {:ok, q1_guess} <- question_model().get_question_guess(q1),
-           {:ok, q2_num} <- question_model().get_question_number(q2),
-           {:ok, q2_answer} <- question_model().get_question_answer(q2),
-           {:ok, q2_guess} <- question_model().get_question_guess(q2) do
+           {:ok, new_q1_num} <- question_model().get_question_number(new_q1) do
         if not is_nil(new_q1_num) do
           send_user(user, state, :cast_to_answer, [other, new_q1_num])
         end
 
-        if not is_nil(q2_answer) and is_nil(q2_guess) do
-          send_user(user, state, :cast_to_guess, [other, q2_num, q2_answer])
-        end
+        with {:ok, q1_num} <- question_model().get_question_number(q1),
+             {:ok, q1_answer} <- question_model().get_question_answer(q1),
+             {:ok, q1_guess} <- question_model().get_question_guess(q1),
+             {:ok, q2_num} <- question_model().get_question_number(q2),
+             {:ok, q2_answer} <- question_model().get_question_answer(q2),
+             {:ok, q2_guess} <- question_model().get_question_guess(q2) do
+          if not is_nil(q2_answer) and is_nil(q2_guess) do
+            send_user(user, state, :cast_to_guess, [other, q2_num, q2_answer])
+          end
 
-        if not is_nil(q1_answer) and not is_nil(q1_guess) do
-          send_user(user, state, :cast_to_see, [other, q1_num, q1_answer, q1_guess])
+          if not is_nil(q1_answer) and not is_nil(q1_guess) do
+            send_user(user, state, :cast_to_see, [other, q1_num, q1_answer, q1_guess])
+          end
         end
       end
     end
