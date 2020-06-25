@@ -14,11 +14,6 @@ defmodule CLI.Register do
     {:succ, []}
   end
 
-  @doc """
-  Reads user's username, removes trailing new line and checks it with the
-  server.
-  Returns greeting message for success aor reason for failure.
-  """
   defp prompt_and_read_input() do
     username = CLI.Util.read_input("Please enter your name: ")
     password = CLI.Util.read_password("Please enter your password: ")

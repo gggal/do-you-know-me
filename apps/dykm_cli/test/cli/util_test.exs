@@ -126,4 +126,10 @@ defmodule CLI.UtilTest do
       assert 1 == Util.loop_until_correct_input(fn -> {:ok, 1} end)
     end
   end
+
+  describe "read_input" do
+    test "promts user" do
+      "output" = capture_io("asd", fn -> Util.read_input("output") end)
+    end
+  end
 end

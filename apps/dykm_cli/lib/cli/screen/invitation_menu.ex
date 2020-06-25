@@ -5,7 +5,7 @@ defmodule CLI.InvitationMenu do
 
   @moduledoc """
   This screen shows all invitations the user has created. Once an invitation
-  is accepted/declined it's not showed anymore. (TODO dynamically add new invitations)
+  is accepted/declined it's not showed anymore.
   """
 
   @doc """

@@ -48,7 +48,6 @@ defmodule CLI.Util do
     end
   end
 
-  # TODO test
   def read_input(msg) do
     IO.gets(msg)
     |> String.replace("\n", "")

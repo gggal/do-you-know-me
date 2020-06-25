@@ -15,22 +15,25 @@ defmodule CLI.AllUsers do
   def run() do
     IO.puts("Other players:\n\n")
 
-    with {:ok, user_list} <- Client.list_registered() do
-      user_list
+    with {:ok, all_list} <- Client.list_registered(),
+         {:ok, related_list} <- Client.list_related() do
+      # all users in the game excluding those that are already invited/playing
+      MapSet.new(all_list)
+      |> MapSet.difference(MapSet.new(related_list))
+      |> MapSet.to_list()
       |> Enum.concat(["back"])
       |> CLI.Util.print_menu()
       |> invite_until_back()
     else
       {:err, reason} ->
+        Logger.error("Listing users failed: #{reason}")
         IO.puts("An error occurred while communicating with the engine.
         Try again later.")
         {:back, []}
     end
   end
 
-  @doc """
-  Sends invitations until user decides to go back to main menu
-  """
+  # Sends invitations until user decides to go back to main menu
   defp invite_until_back(options) do
     case CLI.Util.choose_menu_option(options) do
       "back" ->

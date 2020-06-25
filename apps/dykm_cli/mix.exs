@@ -9,7 +9,8 @@ defmodule Client.MixProject do
       start_permanent: Mix.env() == :prod,
       escript: [main_module: CLI],
       elixirc_paths: elixirc_paths(Mix.env()),
-      deps: deps()
+      deps: deps(),
+      aliases: aliases()
     ]
   end
 
@@ -34,4 +35,6 @@ defmodule Client.MixProject do
   # Specify which paths to compile per environment.
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
+
+  defp aliases, do: [test: "test --no-start"]
 end

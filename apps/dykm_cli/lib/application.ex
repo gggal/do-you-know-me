@@ -7,7 +7,6 @@ defmodule CLI.Application do
 
   use Application
 
-
   @doc """
   Starting the client application
   """
@@ -26,6 +25,4 @@ defmodule CLI.Application do
     # All workers should be restarted if one of them fails
     {:ok, _pid} = Supervisor.start_link(children, strategy: :one_for_all)
   end
-
-  # TODO: add functionality for listing only users eligable for inviting
 end

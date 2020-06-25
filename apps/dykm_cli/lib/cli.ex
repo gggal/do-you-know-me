@@ -58,7 +58,7 @@ defmodule CLI do
       {:ok, :exit} ->
         IO.puts("Exit game")
 
-      {:ok, next_state} ->
+      {:ok, _next_state} ->
         loop(args)
     end
   end

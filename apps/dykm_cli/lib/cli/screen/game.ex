@@ -51,7 +51,6 @@ defmodule CLI.Game do
 
     receive do
       event ->
-        # TODO hibernate them or revive/recycle instead of killing
         Process.exit(check_back, :kill)
         Process.exit(check_custom_event, :kill)
         event
