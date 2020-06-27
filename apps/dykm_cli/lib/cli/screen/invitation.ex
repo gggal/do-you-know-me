@@ -1,5 +1,5 @@
 defmodule CLI.Invitation do
-  @behaviour Screen
+  @behaviour CLI.Screen
   @moduledoc """
   This module represents an open invitation. The user has a choice:
   they can accept or reject the invitation.
@@ -13,7 +13,7 @@ defmodule CLI.Invitation do
   Removes the invitation by accepting or declining it. Regardless of
   the choice, it goes back to invitations screen.
   """
-  @impl Screen
+  @impl CLI.Screen
   def run(other_user) do
     IO.puts("Accept/decline this invitation:")
 
@@ -28,6 +28,9 @@ defmodule CLI.Invitation do
           Logger.error("Accepting invitation failed: #{reason}")
           IO.puts("Something went wrong and the invitation was not accepted.
           Try again later...\n")
+          {:back, []}
+        else
+          :ok -> {:play, [other_user]}
         end
 
       :decline ->
@@ -35,12 +38,13 @@ defmodule CLI.Invitation do
           Logger.error("Declining invitation failed: #{reason}")
           IO.puts("Something went wrong and the invitation was not declined.
           Try again later...\n")
+          {:back, []}
+        else
+          :ok -> {:back, []}
         end
 
       :back ->
-        true
+        {:back, []}
     end
-
-    {:back, []}
   end
 end

@@ -15,7 +15,7 @@ defmodule StateMachine do
     all_users: %{back: :main_menu},
     scores: %{back: :main_menu},
     invitation_menu: %{choose: :invitation, back: :main_menu},
-    invitation: %{back: :invitation_menu},
+    invitation: %{back: :invitation_menu, play: :game},
     game_menu: %{choose: :game, back: :main_menu},
     game: %{back: :game_menu, play: :game},
     exit: %{}

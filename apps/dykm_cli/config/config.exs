@@ -7,6 +7,6 @@ config :logger,
 
 config :logger, :client_error_log,
   path: "client.log",
-  level: :info
+  level: :error
 
 import_config "../../engine/config/#{Mix.env()}.exs"

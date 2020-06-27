@@ -1,5 +1,5 @@
 defmodule CLI.MainMenu do
-  @behaviour Screen
+  @behaviour CLI.Screen
   @moduledoc """
   The main screen acts as an entry point for the game functionality. This
   is the screen every other screen can go back to.
@@ -8,7 +8,7 @@ defmodule CLI.MainMenu do
   @doc """
   Reads user's choice and proceeds with the next screen.
   """
-  @impl Screen
+  @impl CLI.Screen
   def run() do
     IO.puts("Main menu:")
 

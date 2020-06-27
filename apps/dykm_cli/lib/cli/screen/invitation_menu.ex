@@ -1,5 +1,5 @@
 defmodule CLI.InvitationMenu do
-  @behaviour Screen
+  @behaviour CLI.Screen
 
   require Logger
 
@@ -11,7 +11,7 @@ defmodule CLI.InvitationMenu do
   @doc """
   Shows invitations, reads input, opens an invitation.
   """
-  @impl Screen
+  @impl CLI.Screen
   def run() do
     with {:ok, invitations} <- Client.Worker.get_invitations() do
       IO.puts("Your invitations are:\n")

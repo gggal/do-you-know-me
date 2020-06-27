@@ -1,6 +1,6 @@
 defmodule CLI.AllUsers do
   require Logger
-  @behaviour Screen
+  @behaviour CLI.Screen
   @moduledoc """
   This screen shows all online users and gives the user the chance to
   send invitations.
@@ -11,7 +11,7 @@ defmodule CLI.AllUsers do
   @doc """
   Shows available users, sends invitations.
   """
-  @impl Screen
+  @impl CLI.Screen
   def run() do
     IO.puts("Other players:\n\n")
 

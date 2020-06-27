@@ -1,5 +1,5 @@
 defmodule CLI.Login do
-  @behaviour Screen
+  @behaviour CLI.Screen
   @moduledoc """
   The login screen is the first screen that users see. They need to log in
   mask authenticate in order to gain access to the game.
@@ -8,7 +8,7 @@ defmodule CLI.Login do
   @doc """
   Log user in, proceeds with main menu.
   """
-  @impl Screen
+  @impl CLI.Screen
   def run() do
     CLI.Util.loop_until_correct_input(&prompt_and_read_input/0)
     {:succ, []}

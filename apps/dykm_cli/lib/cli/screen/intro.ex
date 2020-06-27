@@ -1,5 +1,5 @@
 defmodule CLI.Intro do
-  @behaviour Screen
+  @behaviour CLI.Screen
   @moduledoc """
   The main screen acts as an entry point for the game functionality.
   It prompts the user to authenticate. Once this is done, user can
@@ -9,7 +9,7 @@ defmodule CLI.Intro do
   @doc """
   Reads user's choice and proceeds with the next screen.
   """
-  @impl Screen
+  @impl CLI.Screen
   def run() do
     IO.puts("Available actions:")
 

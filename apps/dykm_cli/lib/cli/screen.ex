@@ -1,4 +1,4 @@
-defmodule Screen do
+defmodule CLI.Screen do
   @moduledoc """
   This module represents a form/screen shown to the user.
   """

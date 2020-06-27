@@ -1,5 +1,5 @@
 defmodule CLI.Game do
-  @behaviour Screen
+  @behaviour CLI.Screen
 
   alias Client.Worker, as: Client
   alias CLI.Util
@@ -16,7 +16,7 @@ defmodule CLI.Game do
   making the user to guess other's answer to this level question, making user to answer a
   question for themselves.
   """
-  @impl Screen
+  @impl CLI.Screen
   def run(other_user) do
     play(other_user)
 
@@ -133,13 +133,15 @@ defmodule CLI.Game do
       Util.print_separator()
     end
 
-    IO.puts("Your input was send to the server.")
+    IO.puts("Your input was send to the server.\n")
   end
 
   defp print_hold_msg(other_user) do
     IO.puts(
       "It's #{other_user}'s turn to play..." <>
-        "If you don't want to wait, press enter to go back."
+        "If you don't want to wait, press enter to go back.\n"
     )
+
+    Util.print_separator()
   end
 end

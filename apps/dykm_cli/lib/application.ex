@@ -19,6 +19,14 @@ defmodule CLI.Application do
       %{
         id: StateMachineWorker,
         start: {StateMachine, :start, []}
+      },
+      %{
+        id: NotifierSupervisor,
+        start: {CLI.NotifierSupervisor, :start_link, []}
+      },
+      %{
+        id: CLIWorker,
+        start: {CLI, :start_link, []}
       }
     ]
 
