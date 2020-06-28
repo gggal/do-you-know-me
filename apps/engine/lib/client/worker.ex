@@ -325,7 +325,7 @@ defmodule Client.Worker do
   """
   @impl Client.Behaviour
   def cast_to_answer(client, from, q_num) do
-    Logger.error("Client recieved an answer")
+    Logger.info("Client recieved an answer from #{from}")
     GenServer.cast({:dykm_client, client}, {:add_question, q_num, from})
   end
 
@@ -334,7 +334,7 @@ defmodule Client.Worker do
   """
   @impl Client.Behaviour
   def cast_to_guess(client, from, q_num, answer) do
-    Logger.error("Client recieved a guess")
+    Logger.info("Client recieved a guess from #{from}")
     GenServer.cast({:dykm_client, client}, {:add_guess, from, q_num, answer})
   end
 
@@ -343,7 +343,7 @@ defmodule Client.Worker do
   """
   @impl Client.Behaviour
   def cast_to_see(client, from, q_num, answer, guess) do
-    Logger.error("Client recieved to see")
+    Logger.info("Client recieved to see from #{from}")
     GenServer.cast({:dykm_client, client}, {:add_result, from, q_num, answer, guess})
   end
 
@@ -689,8 +689,11 @@ defmodule Client.Worker do
   # PRIVATE#
 
   defp verify_start do
+    server_name = System.get_env("DYKM_SERVER_NAME") || "server"
+    server_location = System.get_env("DYKM_SERVER_LOCATION") || "127.0.0.1"
+
     with {:ok, _} <- start_node(),
-         true <- Node.connect(:"server@127.0.0.1") do
+         true <- Node.connect(:"#{server_name}@#{server_location}") do
       :ok
     else
       {:err, _} -> {:err, :failed_to_start_node}
@@ -702,7 +705,9 @@ defmodule Client.Worker do
 
   defp start_node do
     if node() == :nonode@nohost do
-      Node.start(:"#{:rand.uniform(999_999_999_999)}@127.0.0.1")
+      client_name = System.get_env("DYKM_CLIENT_NAME") || :rand.uniform(999_999_999_999)
+      client_location = System.get_env("DYKM_CLIENT_LOCATION") || "127.0.0.1"
+      Node.start(:"#{client_name}@#{client_location}")
     else
       {:ok, :already_started}
     end

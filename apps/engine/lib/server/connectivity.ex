@@ -5,8 +5,8 @@ defmodule Server.Connectivity do
         {:ok, true}
 
       false ->
-        name = System.get_env("SERVER_NAME") || "server"
-        location = System.get_env("SERVER_LOCATION") || "127.0.0.1"
+        name = System.get_env("DYKM_SERVER_NAME") || "server"
+        location = System.get_env("DYKM_SERVER_LOCATION") || "127.0.0.1"
         Node.start(:"#{name}@#{location}")
     end
   end
