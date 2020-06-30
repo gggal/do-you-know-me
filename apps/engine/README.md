@@ -8,7 +8,7 @@ The DYKM engine is the back-end service for the game. It contains a list of comp
   - clone the repo
   - prepare the database - Assuming you have PosgreSQL already set up on the host, all you need to do is run "mix ecto.migrate" in the engine main directory. 
   - make sure the epmd daemon is up by running "epmd -daemon"
-  - start the server - Run the start_server script, located in the main directory of the engine project. In order to make the server accessible in your local network, set the DYKM_SERVER_LOCATION env variable that's being exported in the script to your local IP address.
+  - start the server - Go to the main "engine" directory and run the start_server script, located in the main directory of the engine project. In order to make the server accessible in your local network, set the DYKM_SERVER_LOCATION env variable that's being exported in the script to your local IP address.
 ------
 ## Add a UI
 When implementing a UI for the game, the following steps should be taken:

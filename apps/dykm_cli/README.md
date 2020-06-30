@@ -16,6 +16,8 @@ The navigation through the game is implemented via a finite state machine. The s
   - obtaining scores and ranking for users
   - playing the game
     
+![alt text](https://github.com/gggal/do_you_know_me/blob/master/apps/dykm_cli/fsm_diagram.png)
+
 In order to access the full functionality, the user needs to authenticate first, meaning they have to choose from 2 options: login (when the user already has an acount for the game) and register (when the user wants to create a new acount). For two users to play the game, they first have to mutually agree to that - either by inviting each other or one inviting the other and the other accepting the invite. Once they do that, each will take turn to answer, guess and inspect questions. When it's the current player's turn to play, they will see a '*' sign succeeding the other player's name in the Play screen.
 
 ------

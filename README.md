@@ -6,6 +6,9 @@ DYKM Game is a game played by two users who answer and guess personal questions 
 
 Players can play with any other player. To do that, they need to send an invite. The other player can either decline or accept it. In case of the latter, the game starts.
 There are no winners or losers. Instead, success rate percentages are calculated for every couple of players who are in a game.
+
+![alt text](https://github.com/gggal/do_you_know_me/blob/master/game_work_flow.jpg)
+
 ------
 # About this repo
 This repository contains 2 projects:
@@ -16,7 +19,4 @@ This repository contains 2 projects:
 
 1. Add password hashing
 2. Phoenix - GUI
-
-add license
-fix nasty bug
-deployment + connectivity tests
+3. Add a license
