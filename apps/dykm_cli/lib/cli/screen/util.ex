@@ -1,4 +1,8 @@
 defmodule CLI.Util do
+  @moduledoc """
+  A utility module for screen implementations.
+  """
+
   @doc """
   Prints a screen separator.
   """
@@ -34,6 +38,10 @@ defmodule CLI.Util do
     loop_until_correct_input(fn -> choose_number(menu) end)
   end
 
+  @doc """
+  Promts user to choose out of a set of options by inputing its number
+  (given it's a 1-endexed list).
+  """
   @spec choose_number(List.t()) :: {:ok, any()} | {:err, String.t()}
   defp choose_number(menu) do
     user_input = read_format_int("Choose a number: ")
@@ -48,12 +56,20 @@ defmodule CLI.Util do
     end
   end
 
+  @doc """
+  Reads and returns a string from the stdin, removing the succeeding new line
+  """
+  @spec read_input(String.t()) :: String.t()
   def read_input(msg) do
     IO.gets(msg)
     |> String.replace("\n", "")
     |> String.replace("\r", "")
   end
 
+  @doc """
+  Same as read_input but hides what the user is typing off the terminal
+  """
+  @spec read_password(String.t()) :: String.t()
   def read_password(msg) do
     pid = spawn_link(fn -> hide_input(msg) end)
     to_return = read_input(msg)
@@ -62,34 +78,6 @@ defmodule CLI.Util do
 
     to_return
   end
-
-  defp hide_input(prompt) do
-    receive do
-      :done -> IO.write(:standard_error, "\e[2K\r")
-    after
-      1 ->
-        IO.write(:standard_error, "\e[2K\r#{prompt} ")
-        hide_input(prompt)
-    end
-  end
-
-  @spec read_format_int(String.t()) :: :err | integer()
-  defp read_format_int(msg) do
-    case IO.gets(msg) |> Integer.parse() do
-      :error -> :err
-      res -> elem(res, 0)
-    end
-  end
-
-  # def read_input_menu(_options, :err), do: nil
-
-  # def read_input_menu(_options, num) when num <= 0, do: nil
-
-  # def read_input_menu(option, num) do
-  #   Enum.at(option, num - 1)
-  # end
-
-  # def print_question(nil), do: IO.puts("nil")
 
   @doc """
   Pretty prints a question.
@@ -140,6 +128,25 @@ defmodule CLI.Util do
         IO.puts(err_msg)
         IO.puts("\n")
         loop_until_correct_input(f)
+    end
+  end
+
+  @spec hide_input(String.t()) :: :done
+  defp hide_input(prompt) do
+    receive do
+      :done -> IO.write(:standard_error, "\e[2K\r")
+    after
+      1 ->
+        IO.write(:standard_error, "\e[2K\r#{prompt} ")
+        hide_input(prompt)
+    end
+  end
+
+  @spec read_format_int(String.t()) :: :err | integer()
+  defp read_format_int(msg) do
+    case IO.gets(msg) |> Integer.parse() do
+      :error -> :err
+      res -> elem(res, 0)
     end
   end
 end

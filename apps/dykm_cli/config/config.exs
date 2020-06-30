@@ -3,10 +3,10 @@
 use Mix.Config
 
 config :logger,
-  backends: [{LoggerFileBackend, :client_error_log}]
+  backends: [{LoggerFileBackend, :cli_log}]
 
-config :logger, :client_error_log,
-  path: "client.log",
+config :logger, :cli_log,
+  path: "dykm_cli.log",
   level: :error
 
 import_config "../../engine/config/#{Mix.env()}.exs"

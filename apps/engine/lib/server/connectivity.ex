@@ -7,7 +7,12 @@ defmodule Server.Connectivity do
       false ->
         name = System.get_env("DYKM_SERVER_NAME") || "server"
         location = System.get_env("DYKM_SERVER_LOCATION") || "127.0.0.1"
-        Node.start(:"#{name}@#{location}")
+        cookie = System.get_env("DYKM_SERVER_COOKIE") || "dykm_elixir_cookie"
+
+        node = Node.start(:"#{name}@#{location}")
+        Node.set_cookie(Node.self(), :"#{cookie}")
+
+        node
     end
   end
 end

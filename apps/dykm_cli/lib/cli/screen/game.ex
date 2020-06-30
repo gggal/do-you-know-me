@@ -5,16 +5,21 @@ defmodule CLI.Game do
   alias CLI.Util
 
   @moduledoc """
-  This module represents a game in progress between the current user and another player of choice.
-  A level contains a sequence of 3 questions for each user. When a user passes a level, another screen is
-  not shown, it stays on this screen and waits for the other user's response instead.
+  This module represents a game in progress between the current player and another player of choice.
+  A level contains a sequence of 3 questions for each player. When a player passes a level, the screen
+  blocks and waits for one of two evenets to happen - the player to input something (which would
+  indicate they want to go back) or the other player to complete their level (which would mean
+  it's the player's turn again).
   """
+
   require Logger
 
   @doc """
-  Completes current level by showing if their guess to the prev level question was correct,
-  making the user to guess other's answer to this level question, making user to answer a
-  question for themselves.
+  Completes current level by:
+    - showing if other's guess to the prev level question was correct,
+    - making the player guess other's answer to this level question,
+    - making the player answer a question for themselves.
+  On the first level of the game only the last one/two questions are available.
   """
   @impl CLI.Screen
   def run(other_user) do

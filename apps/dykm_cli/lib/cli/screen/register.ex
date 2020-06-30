@@ -6,7 +6,7 @@ defmodule CLI.Register do
   """
 
   @doc """
-  Log user in, proceeds with main menu.
+  Registers user, proceeds with main menu.
   """
   @impl CLI.Screen
   def run() do

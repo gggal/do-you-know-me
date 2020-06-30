@@ -11,7 +11,7 @@ defmodule CLI.NotifierSupervisor do
       {CLI.InvitationNotifier, [1]}
     ]
 
-    # if a notifier fails, restart only it
+    # restart only the notifier that failed upon failure
     Supervisor.init(children, strategy: :one_for_one)
   end
 end

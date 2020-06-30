@@ -1,6 +1,6 @@
 defmodule CLI.Application do
   @moduledoc """
-  Single point of access between the user interfaces and the client.
+  The Application module that starts and manages all processes for the CLI
   """
 
   require Logger

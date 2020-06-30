@@ -17,14 +17,14 @@ defmodule CLI do
   end
 
   @doc """
-  Starts the genserver
+  Starts the CLI main process
   """
   def start_link() do
     GenServer.start_link(__MODULE__, nil, name: :cli)
   end
 
   @doc """
-  Adds an invitation to be should as a notification to the player.
+  Adds an invitation to be shown as a notification to the player.
   """
   def notify_invite(inviter) do
     GenServer.cast(:cli, {:notify_invite, inviter})

@@ -6,9 +6,7 @@ defmodule Engine.Cluster do
     {:ok, ipv4} = :inet.parse_ipv4_address('127.0.0.1')
     :erl_boot_server.add_slave(ipv4)
 
-    nodes = [:node1, :node2, :node3]
-
-    nodes
+    [:node1, :node2, :node3]
     |> Enum.map(&Task.async(fn -> spawn_node(&1) end))
     |> Enum.map(&Task.await(&1, 30_000))
   end

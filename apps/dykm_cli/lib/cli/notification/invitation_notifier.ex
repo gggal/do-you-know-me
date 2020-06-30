@@ -1,4 +1,9 @@
 defmodule CLI.InvitationNotifier do
+  @moduledoc """
+  This process keeps track of new invitations by regularly polling the Client process
+  and sending invitations to the CLI process.
+  """
+
   use GenServer
   alias Client.Worker, as: Client
 

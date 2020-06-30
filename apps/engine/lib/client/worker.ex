@@ -47,7 +47,7 @@ defmodule Client.Worker do
     end
   end
 
-  @doc """
+  @doc ~S"""
   Registers the client by creating new user. Registration is a one-time event. It's
   possible to register for the second time only if the client has been unregistered
   beforehand.
@@ -691,8 +691,10 @@ defmodule Client.Worker do
   defp verify_start do
     server_name = System.get_env("DYKM_SERVER_NAME") || "server"
     server_location = System.get_env("DYKM_SERVER_LOCATION") || "127.0.0.1"
+    cookie = System.get_env("DYKM_SERVER_COOKIE") || "dykm_elixir_cookie"
 
     with {:ok, _} <- start_node(),
+         true <- Node.set_cookie(Node.self(), :"#{cookie}"),
          true <- Node.connect(:"#{server_name}@#{server_location}") do
       :ok
     else

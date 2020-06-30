@@ -1,7 +1,6 @@
 defmodule Engine.Application do
   @moduledoc """
-  Server Application
-
+  Engine Application
   """
   use Application
   require Logger

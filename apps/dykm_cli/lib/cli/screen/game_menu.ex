@@ -1,14 +1,16 @@
 defmodule CLI.GameMenu do
   @behaviour CLI.Screen
   @moduledoc """
-  Play menu is the screen that shows the user all users they've played with and gives them the chance to
-  continue a game.
+  Play menu is the screen that shows the player all other players they've
+  played with and gives them the chance to continue their game. If there's a
+  '*' succeeding a player's name, that means that they're waiting for the
+  current player to play.
   """
 
   require Logger
 
   @doc """
-  Continue a game with another player.
+  List all related players and promts the user to choose.
   """
   @impl CLI.Screen
   def run() do

@@ -1,8 +1,7 @@
 defmodule CLI.Login do
   @behaviour CLI.Screen
   @moduledoc """
-  The login screen is the first screen that users see. They need to log in
-  mask authenticate in order to gain access to the game.
+  Authenticates the user, given they already have an account.
   """
 
   @doc """

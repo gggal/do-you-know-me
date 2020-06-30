@@ -1,14 +1,15 @@
 defmodule CLI.Scores do
   @behaviour CLI.Screen
   @moduledoc """
-  The scores screen shows the current scores for all games.
+  The scores screen shows the current scores for all games the player is in,
+  in a tabular format.
   """
   require Logger
 
   alias Client.Worker, as: Client
 
   @doc """
-  Prints the scores and goes back to the previous screen.
+  Prints the scores table and the summary.
   """
   @impl CLI.Screen
   def run() do

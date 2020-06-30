@@ -1,6 +1,6 @@
 defmodule Server.WorkerTest do
   use ExUnit.Case
-  # doctest First
+
   import Mox
   setup :verify_on_exit!
   setup :set_mox_global

@@ -1,9 +1,8 @@
 defmodule CLI.Intro do
   @behaviour CLI.Screen
   @moduledoc """
-  The main screen acts as an entry point for the game functionality.
-  It prompts the user to authenticate. Once this is done, user can
-  proceed with the game.
+  The Intro screen is the first screen that users see. They need to
+  log in/register in order to gain access to the game.
   """
 
   @doc """

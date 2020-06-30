@@ -5,8 +5,9 @@ defmodule CLI.Screen do
 
   @doc """
   Shows the screen message, reads user input, connects to the server and performs
-  actual logic.
-  Returns the run function of the next form to be displayed.
+  some action.
+  Returns the next move to be performed on the state machine depending on the result
+  of the performed action + additional arguments for the next screen.
   """
   @callback run(any()) :: {:ok, fun()} | :exit | {:err, String.t()}
   @callback run() :: {:ok, fun()}

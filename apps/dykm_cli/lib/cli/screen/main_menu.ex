@@ -6,7 +6,7 @@ defmodule CLI.MainMenu do
   """
 
   @doc """
-  Reads user's choice and proceeds with the next screen.
+  Reads player's choice and proceeds with the next screen.
   """
   @impl CLI.Screen
   def run() do

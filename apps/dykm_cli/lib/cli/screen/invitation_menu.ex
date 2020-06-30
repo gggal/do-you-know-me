@@ -1,12 +1,11 @@
 defmodule CLI.InvitationMenu do
   @behaviour CLI.Screen
-
-  require Logger
-
   @moduledoc """
   This screen shows all invitations the user has created. Once an invitation
-  is accepted/declined it's not showed anymore.
+  is accepted/declined, it's not showed anymore.
   """
+
+  require Logger
 
   @doc """
   Shows invitations, reads input, opens an invitation.

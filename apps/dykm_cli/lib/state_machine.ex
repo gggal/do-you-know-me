@@ -1,6 +1,10 @@
 defmodule StateMachine do
   use GenServer
 
+  @moduledoc """
+  This module represents the state machine used for navigation through the CLI.
+  """
+
   @states %{
     intro: %{login: :login, register: :register, exit: :exit},
     login: %{succ: :main_menu},
@@ -23,14 +27,25 @@ defmodule StateMachine do
 
   # __________API__________#
 
+  @doc """
+  Starts the State Machine process
+  """
   def start() do
     GenServer.start_link(__MODULE__, nil, name: :state_machine)
   end
 
+  @doc """
+  Moves from the current state to the next one depending on the specified move.
+  """
+  @spec move(atom()) :: {:ok, atom()} | :err
   def move(move) do
     GenServer.call(:state_machine, {:move, move})
   end
 
+  @doc """
+  Returns the current state of the state machine
+  """
+  @spec get_state() :: atom()
   def get_state() do
     GenServer.call(:state_machine, :get_state)
   end

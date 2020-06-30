@@ -20,12 +20,8 @@
 /apps/*/*.ez
 
 # custom log files
-/apps/engine/*.log
-/apps/engine/*.log
-/apps/dykm_cli/client.log
-/apps/dykm_cli/client_test.log
-/apps/*/app.log
-/app.log
+/apps/*/*.log
+/*.log
 
 # ignore build dir
 /.elixir_ls/

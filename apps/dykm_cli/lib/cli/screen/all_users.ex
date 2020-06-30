@@ -2,14 +2,14 @@ defmodule CLI.AllUsers do
   require Logger
   @behaviour CLI.Screen
   @moduledoc """
-  This screen shows all online users and gives the user the chance to
-  send invitations.
+  This screen shows all players that can be invited and gives the player the chance to
+  do so by choosing a number.
   """
 
   alias Client.Worker, as: Client
 
   @doc """
-  Shows available users, sends invitations.
+  Shows available players and sends invitations.
   """
   @impl CLI.Screen
   def run() do
@@ -17,7 +17,7 @@ defmodule CLI.AllUsers do
 
     with {:ok, all_list} <- Client.list_registered(),
          {:ok, related_list} <- Client.list_related() do
-      # all users in the game excluding those that are already invited/playing
+      # all players in the game excluding those that are already invited/playing
       MapSet.new(all_list)
       |> MapSet.difference(MapSet.new(related_list))
       |> MapSet.to_list()
