@@ -371,5 +371,5 @@ defmodule Server.Game do
 
   defp ordered?({user1, user2}), do: user1 < user2
 
-  defp random_question, do: :rand.uniform(Server.Worker.questions_count())
+  defp random_question, do: :rand.uniform(Server.Worker.questions_count()) - 1
 end

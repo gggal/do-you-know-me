@@ -23,3 +23,5 @@ config :logger, :engine_error_log,
   format: {Formatter, :format},
   metadata: [:file, :function, :line],
   level: :info
+
+config :bcrypt_elixir, log_rounds: 4

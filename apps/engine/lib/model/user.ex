@@ -1,7 +1,7 @@
 defmodule User do
   @callback exists?(String.t()) :: boolean()
   @callback insert(String.t(), String.t()) :: boolean()
-  @callback get_password(String.t()) :: :err | {:ok, String.t()}
+  @callback correct_password?(String.t(), String.t()) :: :err | {:ok, boolean()}
   @callback delete(String.t()) :: boolean()
   @callback all() :: [String.t()]
 end
@@ -43,16 +43,24 @@ defmodule Server.User do
     end
   end
 
-  def insert(name, password) do
-    changeset(%Server.User{}, %{username: name, password: password})
+  def insert(name, password) when is_bitstring(password) and password != "" do
+    # hash the password
+    %{password_hash: hash} = Bcrypt.add_hash(password)
+
+    changeset(%Server.User{}, %{username: name, password: hash})
     |> DB.Repo.insert()
     |> Server.Util.changeset_to_bool()
   end
 
-  def get_password(name) do
-    case Server.User |> DB.Repo.get(name) do
+  def insert(_, _), do: false
+
+  def correct_password?(name, password) do
+    with %{password: hash} <- Server.User |> DB.Repo.get(name),
+         {:ok, _} <- Bcrypt.check_pass(%{password_hash: hash}, password) do
+      {:ok, true}
+    else
       nil -> :err
-      %{password: password} -> {:ok, password}
+      _ -> {:ok, false}
     end
   end
 

@@ -70,6 +70,14 @@ defmodule Server.QuestionTest do
              Question.set_question_number(QuestionState.get_id(), Server.Worker.questions_count())
   end
 
+  test "question numberlimit is inclusive of the last value" do
+    assert true ==
+             Question.set_question_number(
+               QuestionState.get_id(),
+               Server.Worker.questions_count() - 1
+             )
+  end
+
   test "set question number to non-existent question" do
     assert false == Question.set_question_number(-1, 1)
   end
@@ -79,7 +87,7 @@ defmodule Server.QuestionTest do
   end
 
   test "set valid question number to existent question" do
-    random_number = :rand.uniform(Server.Worker.questions_count())
+    random_number = :rand.uniform(Server.Worker.questions_count()) - 1
     assert true == Question.set_question_number(QuestionState.get_id(), random_number)
     assert {:ok, random_number} == Question.get_question_number(QuestionState.get_id())
   end

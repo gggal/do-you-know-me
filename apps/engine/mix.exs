@@ -40,7 +40,8 @@ defmodule Engine.MixProject do
       {:mox, "~> 0.5.0", only: :test},
       {:ecto_sql, "~> 3.3.4"},
       {:postgrex, ">= 0.10.0"},
-      {:poison, "~> 3.1"}
+      {:poison, "~> 3.1"},
+      {:bcrypt_elixir, "~> 2.0"}
     ]
   end
 

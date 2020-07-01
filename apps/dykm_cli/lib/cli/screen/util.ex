@@ -43,7 +43,7 @@ defmodule CLI.Util do
   (given it's a 1-endexed list).
   """
   @spec choose_number(List.t()) :: {:ok, any()} | {:err, String.t()}
-  defp choose_number(menu) do
+  def choose_number(menu) do
     user_input = read_format_int("Choose a number: ")
     options_count = Enum.count(menu)
 

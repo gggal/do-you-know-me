@@ -3,7 +3,8 @@ defmodule DummyUser do
 
   def exists?(_), do: true
   def insert(_, _), do: true
-  def get_password(_), do: {:ok, "password"}
+  def correct_password?(_, "password"), do: {:ok, true}
+  def correct_password?(_, _), do: {:ok, false}
   def delete(_), do: true
   def all(), do: []
 end

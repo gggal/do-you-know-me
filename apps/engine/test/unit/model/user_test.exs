@@ -50,12 +50,25 @@ defmodule Server.UserTest do
     on_exit(fn -> %User{username: to_insert} |> DB.Repo.delete() end)
   end
 
-  test "get password for non-existent user" do
-    assert :err == User.get_password(TestUtil.random_username())
+  test "check for correct password" do
+    to_insert = TestUtil.random_username()
+    assert true == User.insert(to_insert, "password")
+    assert {:ok, true} == User.correct_password?(to_insert, "password")
+    assert {:ok, false} == User.correct_password?(to_insert, "password1")
+
+    on_exit(fn -> %User{username: to_insert} |> DB.Repo.delete() end)
   end
 
-  test "get password for existing user" do
-    assert {:ok, ""} == User.get_password(@username)
+  test "validating password for non-existent user" do
+    assert :err == User.correct_password?("no_such_user", "password")
+  end
+
+  test "password is hashed after insert" do
+    to_insert = TestUtil.random_username()
+    assert true == User.insert(to_insert, "password")
+    %{password: hash} = DB.Repo.get(User, to_insert)
+    assert hash != "password"
+    on_exit(fn -> %User{username: to_insert} |> DB.Repo.delete() end)
   end
 
   test "delete user by non-existent username" do

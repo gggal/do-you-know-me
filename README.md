@@ -17,6 +17,5 @@ This repository contains 2 projects:
 ------
 # Next TODOs
 
-1. Add password hashing
 2. Phoenix - GUI
 3. Add a license

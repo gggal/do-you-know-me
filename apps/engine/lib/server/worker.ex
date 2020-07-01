@@ -518,10 +518,10 @@ defmodule Server.Worker do
   end
 
   defp authenticated?(user, password) do
-    with {:ok, db_pass} <- user_model().get_password(user) do
-      db_pass == password
+    with {:ok, correct} <- user_model().correct_password?(user, password) do
+      correct
     else
-      nil -> false
+      :err -> false
     end
   end
 

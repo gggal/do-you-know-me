@@ -6,8 +6,27 @@ The DYKM engine is the back-end service for the game. It contains a list of comp
 ------
 ## Start the game server
   - clone the repo
-  - prepare the database - Assuming you have PosgreSQL already set up on the host, all you need to do is run "mix ecto.migrate" in the engine main directory. 
-  - make sure the epmd daemon is up by running "epmd -daemon"
+  - make sure you have a C compiler installed (needed for password encryption package)
+  - install dependencies
+     > mix deps.get
+  - set up PostgreSQL (install and have the service running)
+    - install and enable the service (os dependent)
+    - create "dykm_user" role in PostgreSQL by running the following in PSQL:
+  
+      > postgres=#CREATE USER dykm_user WITH SUPERUSER CREATEDB CREATEROLE LOGIN ENCRYPTED PASSWORD '\*password_of_choice\*';
+
+    - create database by running the following in the main engine directory
+    
+      > mix ecto.create & mix ecto.migrate
+    
+  - make sure the epmd daemon is up 
+  
+    > epmd -daemon
+
+  - compile the project
+
+    > MIX_ENV=prod mix compile
+
   - start the server - Go to the main "engine" directory and run the start_server script, located in the main directory of the engine project. In order to make the server accessible in your local network, set the DYKM_SERVER_LOCATION env variable that's being exported in the script to your local IP address.
 ------
 ## Add a UI
